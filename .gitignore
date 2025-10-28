@@ -59,8 +59,7 @@ Desktop.ini
 
 # Data files (keep raw_data but ignore processed outputs)
 formatted_data/
-*.csv
-*.arff
+results/
 !raw_data/*.csv
 
 # Weka library (large file, users should download separately)

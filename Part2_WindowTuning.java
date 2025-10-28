@@ -6,6 +6,7 @@ import weka.core.*;
 import weka.core.converters.ConverterUtils.DataSource;
 import weka.classifiers.trees.J48;
 import weka.classifiers.Evaluation;
+import com.github.freva.asciitable.AsciiTable;
 
 /**
  * Part2_WindowTuning
@@ -32,6 +33,10 @@ public class Part2_WindowTuning {
             throw new IOException("formatted_data directory not found. Please run Part 1 first.");
         }
 
+        // Create results folder for Part 2
+        Path part2Dir = baseDir.resolve("results/part2");
+        Files.createDirectories(part2Dir);
+
         System.out.println("Testing window sizes: 1s, 2s, 3s, 4s (with 1s sliding)");
         System.out.println();
 
@@ -40,13 +45,14 @@ public class Part2_WindowTuning {
         for (int i = 0; i < WINDOW_SIZES_MS.length; i++) {
             int windowMs = WINDOW_SIZES_MS[i];
             double windowSec = windowMs / 1000.0;
+            int windowSecInt = windowMs / 1000;  // For cleaner filename: 1s, 2s, 3s, 4s
 
             System.out.println("=" .repeat(80));
             System.out.println("Testing Window Size: " + windowSec + " seconds");
             System.out.println("=" .repeat(80));
 
-            Path featuresCsv = baseDir.resolve("features_part2_" + windowSec + "s.csv");
-            Path featuresArff = baseDir.resolve("features_part2_" + windowSec + "s.arff");
+            Path featuresCsv = part2Dir.resolve("features_" + windowSecInt + "s.csv");
+            Path featuresArff = part2Dir.resolve("features_" + windowSecInt + "s.arff");
 
             // Extract features with current window size
             System.out.println("Extracting features with " + windowSec + "s windows...");
@@ -72,22 +78,121 @@ public class Part2_WindowTuning {
         System.out.println("SUMMARY: Window Size Comparison");
         System.out.println("=" .repeat(80));
         System.out.println();
-        System.out.printf("%-15s %10s%n", "Window Size", "Accuracy");
-        System.out.println("-".repeat(30));
-
+        
+        // Find best window
         int bestIndex = 0;
-        for (int i = 0; i < WINDOW_SIZES_MS.length; i++) {
-            double windowSec = WINDOW_SIZES_MS[i] / 1000.0;
-            System.out.printf("%-15s %9.2f%%%n", windowSec + "s", accuracies[i]);
+        for (int i = 1; i < WINDOW_SIZES_MS.length; i++) {
             if (accuracies[i] > accuracies[bestIndex]) {
                 bestIndex = i;
             }
         }
-
-        System.out.println("-".repeat(30));
-        double bestWindowSec = WINDOW_SIZES_MS[bestIndex] / 1000.0;
-        System.out.printf("Best: %.1fs with %.2f%% accuracy%n", bestWindowSec, accuracies[bestIndex]);
+        
+        // Prepare data for table
+        String[][] data = new String[WINDOW_SIZES_MS.length][3];
+        for (int i = 0; i < WINDOW_SIZES_MS.length; i++) {
+            double windowSec = WINDOW_SIZES_MS[i] / 1000.0;
+            data[i][0] = windowSec + "s";
+            data[i][1] = String.format("%.2f%%", accuracies[i]);
+            data[i][2] = (i == bestIndex) ? "★ BEST" : "";
+        }
+        
+        // Print table using ascii-table library
+        String[] headers = {"Window Size", "Accuracy", "Status"};
+        System.out.println(AsciiTable.getTable(headers, data));
+        
         System.out.println();
+        double bestWindowSec = WINDOW_SIZES_MS[bestIndex] / 1000.0;
+        System.out.printf("★ Optimal window size: %.1fs with %.2f%% accuracy%n", bestWindowSec, accuracies[bestIndex]);
+        System.out.println();
+        
+        // Save best window size to config file in part2 folder
+        saveBestWindowSize(part2Dir, WINDOW_SIZES_MS[bestIndex]);
+        
+        // Save summary results to text file
+        saveResultsSummary(part2Dir, WINDOW_SIZES_MS, accuracies, bestIndex);
+    }
+    
+    /**
+     * Save results summary to text file
+     */
+    private static void saveResultsSummary(Path part2Dir, int[] windowSizes, double[] accuracies, int bestIndex) throws IOException {
+        Path resultsFile = part2Dir.resolve("results.txt");
+        
+        try (BufferedWriter bw = Files.newBufferedWriter(resultsFile, StandardCharsets.UTF_8,
+                StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)) {
+            
+            bw.write("================================================================================\n");
+            bw.write("PART 2: Time Window Tuning Results\n");
+            bw.write("================================================================================\n\n");
+            bw.write("Configuration:\n");
+            bw.write("  - Window Sizes Tested: 1s, 2s, 3s, 4s\n");
+            bw.write("  - Sliding Window: 1 second\n");
+            bw.write("  - Features: 6 (mean, std per axis)\n");
+            bw.write("  - Classifier: Decision Tree (J48)\n");
+            bw.write("  - Validation: 10-fold cross-validation\n\n");
+            
+            bw.write("Results:\n\n");
+            
+            // Prepare table data
+            String[][] data = new String[windowSizes.length][3];
+            for (int i = 0; i < windowSizes.length; i++) {
+                double windowSec = windowSizes[i] / 1000.0;
+                data[i][0] = windowSec + "s";
+                data[i][1] = String.format("%.2f%%", accuracies[i]);
+                data[i][2] = (i == bestIndex) ? "★ BEST" : "";
+            }
+            
+            String[] headers = {"Window Size", "Accuracy", "Status"};
+            String table = AsciiTable.getTable(headers, data);
+            bw.write(table);
+            bw.write("\n\n");
+            
+            double bestWindowSec = windowSizes[bestIndex] / 1000.0;
+            bw.write("================================================================================\n");
+            bw.write("CONCLUSION\n");
+            bw.write("================================================================================\n");
+            bw.write(String.format("Optimal window size: %.1fs with %.2f%% accuracy\n", bestWindowSec, accuracies[bestIndex]));
+            bw.write("\nThis window size will be used for Parts 3, 4, and 5.\n");
+        }
+        
+        System.out.println("✓ Results summary saved to: " + resultsFile);
+    }
+    
+    /**
+     * Save the best window size to a config file for later parts to use
+     */
+    private static void saveBestWindowSize(Path part2Dir, int bestWindowMs) throws IOException {
+        Path configFile = part2Dir.resolve("best_window_config.txt");
+        try (BufferedWriter bw = Files.newBufferedWriter(configFile, StandardCharsets.UTF_8,
+                StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)) {
+            bw.write("# Best window size from Part 2\n");
+            bw.write("# This file is automatically generated\n");
+            bw.write("BEST_WINDOW_MS=" + bestWindowMs + "\n");
+            bw.write("BEST_WINDOW_SEC=" + (bestWindowMs / 1000.0) + "\n");
+        }
+        System.out.println("✓ Best window size saved to: " + configFile);
+        System.out.println("  Part 3, 4, and 5 will use " + (bestWindowMs / 1000.0) + "s windows");
+        System.out.println();
+    }
+    
+    /**
+     * Read the best window size from config file (for Part 3, 4, 5 to use)
+     */
+    public static int getBestWindowSize(Path baseDir) throws IOException {
+        Path configFile = baseDir.resolve("results/part2/best_window_config.txt");
+        if (!Files.exists(configFile)) {
+            throw new IOException("best_window_config.txt not found in results/part2/. Please run Part 2 first to determine optimal window size.");
+        }
+        
+        try (BufferedReader br = Files.newBufferedReader(configFile, StandardCharsets.UTF_8)) {
+            for (String line; (line = br.readLine()) != null; ) {
+                line = line.trim();
+                if (line.startsWith("BEST_WINDOW_MS=")) {
+                    return Integer.parseInt(line.substring("BEST_WINDOW_MS=".length()));
+                }
+            }
+        }
+        throw new IOException("Invalid config file format");
     }
 
     /**

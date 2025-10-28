@@ -42,7 +42,7 @@ fi
 
 echo ""
 echo "====================================="
-echo "Checking for Weka library"
+echo "Checking for required libraries"
 echo "====================================="
 echo ""
 
@@ -60,6 +60,17 @@ else
     echo ""
     echo "Download from: https://www.cs.waikato.ac.nz/ml/weka/"
     exit 1
+fi
+
+# Check if ascii-table.jar exists
+if [ -f "lib/ascii-table-1.2.0.jar" ]; then
+    echo "✓ ASCII Table library found at lib/ascii-table-1.2.0.jar"
+else
+    echo "⚠ ASCII Table library NOT found (optional)"
+    echo ""
+    echo "For better formatted tables, download:"
+    echo "  wget -P lib https://repo1.maven.org/maven2/com/github/freva/ascii-table/1.2.0/ascii-table-1.2.0.jar"
+    echo ""
 fi
 
 echo ""

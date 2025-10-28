@@ -10,10 +10,31 @@ SPML-course-projects/
 ├── raw_data/                           # All raw CSV files from smartwatch (Assignment 1 + 2)
 │   └── G5NZCJ022402200-Assignment*-Jinyoon-*-hand_wash-*.csv
 ├── formatted_data/                     # Cleaned data (timestamp, ax, ay, az)
+├── results/                            # Results organized by part
+│   ├── part1/                          # Part 1 results
+│   │   ├── features.csv
+│   │   ├── features.arff
+│   │   └── results.txt
+│   ├── part2/                          # Part 2 results (different window sizes)
+│   │   ├── features_1s.csv
+│   │   ├── features_1s.arff
+│   │   ├── features_2s.csv
+│   │   ├── features_2s.arff
+│   │   ├── features_3s.csv
+│   │   ├── features_3s.arff
+│   │   ├── features_4s.csv
+│   │   ├── features_4s.arff
+│   │   ├── best_window_config.txt
+│   │   └── results.txt
+│   ├── part3/                          # Part 3 results (12 features)
+│   │   ├── features.csv
+│   │   ├── features.arff
+│   │   └── results.txt
+│   ├── part4/                          # Part 4 results (feature selection)
+│   └── part5/                          # Part 5 results (classifier comparison)
 ├── lib/
-│   └── weka.jar                        # Weka library (download separately)
-├── features.csv                        # Generated features with labels
-├── features.arff                       # Weka-compatible feature file
+│   ├── weka.jar                        # Weka library (download separately)
+│   └── ascii-table-1.2.0.jar           # ASCII Table library (optional)
 ├── check_jdk.sh                        # Script to verify JDK and Weka installation
 ├── compile.sh                          # Script to clean and compile all Java files
 ├── Assignment2_Handler.java            # Main handler/entry point for all parts
@@ -43,12 +64,13 @@ Each Part file contains all necessary functions for feature extraction, ARFF con
 - **Features**: 6 features (mean, std per axis)
 - **Classifier**: Decision Tree
 - **Output**: Accuracy for each window size to identify optimal time interval
+- **Note**: Saves best window size to `best_window_config.txt` for use in Parts 3, 4, 5
 
 ### Part 3: Feature Expansion
 - **Goal**: Add median and RMS (Root Mean Square) features
 - **Implementation**: `Part3_FeatureExpansion.java`
 - **Features**: 12 features (mean, std, median, RMS per axis)
-- **Window**: Best window from Part 2
+- **Window**: Best window from Part 2 (automatically loaded from config)
 - **Classifier**: Decision Tree
 - **Output**: Accuracy improvement with expanded features
 
@@ -96,24 +118,24 @@ This script:
 ### Run Individual Parts
 ```bash
 # Part 1: Data combination
-java -cp ".:lib/weka.jar" Assignment2_Handler part1
+java -cp ".:lib/weka.jar:lib/ascii-table-1.2.0.jar" Assignment2_Handler part1
 
 # Part 2: Window tuning
-java -cp ".:lib/weka.jar" Assignment2_Handler part2
+java -cp ".:lib/weka.jar:lib/ascii-table-1.2.0.jar" Assignment2_Handler part2
 
 # Part 3: Feature expansion
-java -cp ".:lib/weka.jar" Assignment2_Handler part3
+java -cp ".:lib/weka.jar:lib/ascii-table-1.2.0.jar" Assignment2_Handler part3
 
 # Part 4: Feature selection (Decision Tree)
-java -cp ".:lib/weka.jar" Assignment2_Handler part4
+java -cp ".:lib/weka.jar:lib/ascii-table-1.2.0.jar" Assignment2_Handler part4
 
 # Part 5: Classifier comparison (Random Forest & SVM)
-java -cp ".:lib/weka.jar" Assignment2_Handler part5
+java -cp ".:lib/weka.jar:lib/ascii-table-1.2.0.jar" Assignment2_Handler part5
 ```
 
 ### Run All Parts
 ```bash
-java -cp ".:lib/weka.jar" Assignment2_Handler all
+java -cp ".:lib/weka.jar:lib/ascii-table-1.2.0.jar" Assignment2_Handler all
 ```
 
 ## Key Features
@@ -168,19 +190,59 @@ mean_x,std_x,mean_y,std_y,mean_z,std_z,Activity
 -4.523,0.421,1.234,0.567,8.901,0.345,hand_wash
 ```
 
+## Platform Compatibility
+
+This project is compatible with **Linux, macOS, and Windows** (with minor adjustments):
+
+### Linux & macOS ✅
+- Shell scripts (`check_jdk.sh`, `compile.sh`) work natively
+- All commands work as-is
+
+### Windows
+For Windows users, you have two options:
+
+**Option 1: Use WSL (Windows Subsystem for Linux)** - Recommended
+- Install WSL and run commands as-is
+- Everything works the same as Linux
+
+**Option 2: Use Command Prompt/PowerShell**
+- Replace shell scripts with manual commands:
+  ```bash
+  # Instead of ./compile.sh, use:
+  javac -cp ".;lib/weka.jar;lib/ascii-table-1.2.0.jar" *.java
+  
+  # Instead of running programs with:
+  java -cp ".:lib/weka.jar:lib/ascii-table-1.2.0.jar" Assignment2_Handler part1
+  # Use (note semicolons instead of colons):
+  java -cp ".;lib/weka.jar;lib/ascii-table-1.2.0.jar" Assignment2_Handler part1
+  ```
+- **Note**: Windows uses `;` as classpath separator, not `:`
+
 ## Dependencies
 - **Java**: JDK 8 or higher
 - **Weka**: 3.8.x or higher (place `weka.jar` in `lib/` directory)
-- Download Weka from: https://www.cs.waikato.ac.nz/ml/weka/
+  - Download from: https://www.cs.waikato.ac.nz/ml/weka/
+- **ASCII Table**: 1.2.0 (optional, for better formatted output tables)
+  - Download: `wget -P lib https://repo1.maven.org/maven2/com/github/freva/ascii-table/1.2.0/ascii-table-1.2.0.jar`
+  - Or manually download and place in `lib/` folder
 
 ## Submission Deliverables
-1. **features.csv** - Final feature file
+1. **features.csv** - Final feature file (from best performing part, found in `results/` folder)
 2. **Report** - Results for all 5 parts including:
-   - Part 1: Accuracy with more training data
-   - Part 2: Accuracy for each window size
-   - Part 3: Accuracy with expanded features
+   - Part 1: Baseline accuracy with complete dataset
+   - Part 2: Accuracy for each window size (1s, 2s, 3s, 4s)
+   - Part 3: Accuracy with expanded features (12 features)
    - Part 4: Selected features and accuracy progression (Decision Tree)
    - Part 5: Selected features and accuracy progression (Random Forest & SVM)
+   - Conclusion: Best classifier and configuration
+
+## Output Organization
+All results are organized in the `results/` folder:
+- `results/part1/` - Baseline with 1s windows, 6 features
+- `results/part2/` - Window tuning results (1s, 2s, 3s, 4s)
+- `results/part3/` - Feature expansion with 12 features
+- `results/part4/` - Feature selection (Decision Tree)
+- `results/part5/` - Classifier comparison (Random Forest & SVM)
    - Conclusion: Best classifier and configuration
 
 ## Notes
@@ -188,9 +250,6 @@ mean_x,std_x,mean_y,std_y,mean_z,std_z,Activity
 - Activity labels extracted from filenames: `hand_wash`, `non_hand_wash`
 - Classification uses 10-fold cross-validation for accuracy evaluation
 - Sequential Feature Selection uses forward selection (greedy approach)
-
-## Author
-Jinyoon Ok
 
 ## Date
 October 2025

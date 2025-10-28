@@ -29,8 +29,13 @@ public class Part1_DataProcessor {
         Path baseDir = Paths.get(".").toAbsolutePath().normalize();
         Path rawDataDir = baseDir.resolve("raw_data");
         Path formattedDataDir = baseDir.resolve("formatted_data");
-        Path featuresCsv = baseDir.resolve("features_part1.csv");
-        Path featuresArff = baseDir.resolve("features_part1.arff");
+        
+        // Create results folder for Part 1
+        Path part1Dir = baseDir.resolve("results/part1");
+        Files.createDirectories(part1Dir);
+        
+        Path featuresCsv = part1Dir.resolve("features.csv");
+        Path featuresArff = part1Dir.resolve("features.arff");
 
         // Step 1: Format raw data
         System.out.println("Step 1: Formatting raw data...");
@@ -52,7 +57,8 @@ public class Part1_DataProcessor {
 
         // Step 4: Train and evaluate classifier
         System.out.println("Step 4: Training Decision Tree classifier...");
-        evaluateClassifier(featuresArff);
+        Path resultsFile = part1Dir.resolve("results.txt");
+        evaluateClassifier(featuresArff, resultsFile);
     }
 
     /**
@@ -270,7 +276,7 @@ public class Part1_DataProcessor {
     /**
      * Train Decision Tree and evaluate with 10-fold cross-validation
      */
-    private static void evaluateClassifier(Path arffFile) throws Exception {
+    private static void evaluateClassifier(Path arffFile, Path resultsFile) throws Exception {
         // Load data
         DataSource source = new DataSource(arffFile.toString());
         Instances data = source.getDataSet();
@@ -292,7 +298,27 @@ public class Part1_DataProcessor {
         Evaluation eval = new Evaluation(data);
         eval.crossValidateModel(tree, data, 10, new Random(1));
 
-        // Print results
+        // Create output string
+        StringBuilder output = new StringBuilder();
+        output.append("================================================================================\n");
+        output.append("PART 1: Baseline Accuracy Results\n");
+        output.append("================================================================================\n\n");
+        output.append("Configuration:\n");
+        output.append("  - Window Size: 1 second\n");
+        output.append("  - Features: 6 (mean, std per axis)\n");
+        output.append("  - Classifier: Decision Tree (J48)\n");
+        output.append("  - Validation: 10-fold cross-validation\n\n");
+        
+        output.append("Dataset Information:\n");
+        output.append("  - Instances: ").append(data.numInstances()).append("\n");
+        output.append("  - Attributes: ").append(data.numAttributes()).append("\n");
+        output.append("  - Classes: ").append(data.numClasses()).append("\n");
+        for (int i = 0; i < data.numClasses(); i++) {
+            output.append("    - ").append(data.classAttribute().value(i)).append("\n");
+        }
+        output.append("\n");
+
+        // Print results to console
         System.out.println("=== Decision Tree (J48) Results ===");
         System.out.println();
         System.out.println("Accuracy: " + String.format("%.2f%%", eval.pctCorrect()));
@@ -309,6 +335,32 @@ public class Part1_DataProcessor {
         System.out.println();
         System.out.println("=== Detailed Statistics ===");
         System.out.println(eval.toClassDetailsString());
+
+        // Append results to output
+        output.append("=== Decision Tree (J48) Results ===\n\n");
+        output.append("Accuracy: ").append(String.format("%.2f%%", eval.pctCorrect())).append("\n");
+        output.append("Kappa: ").append(String.format("%.4f", eval.kappa())).append("\n\n");
+        
+        output.append("=== Confusion Matrix ===\n");
+        for (int i = 0; i < matrix.length; i++) {
+            for (int j = 0; j < matrix[i].length; j++) {
+                output.append((int)matrix[i][j]).append(" ");
+            }
+            output.append("\n");
+        }
+        output.append("\n");
+        
+        output.append("=== Detailed Statistics ===\n");
+        output.append(eval.toClassDetailsString());
+        
+        // Save to file
+        try (BufferedWriter bw = Files.newBufferedWriter(resultsFile, StandardCharsets.UTF_8,
+                StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)) {
+            bw.write(output.toString());
+        }
+        
+        System.out.println();
+        System.out.println("✓ Results saved to: " + resultsFile);
     }
 
     /**
