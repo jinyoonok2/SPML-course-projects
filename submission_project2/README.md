@@ -121,7 +121,7 @@ This script:
 
 ### Run Individual Parts
 
-**For Java 8 users (no warnings):**
+**Parts 1, 2, and 3:**
 ```bash
 # Part 1: Data combination
 java -cp ".:lib/weka.jar:lib/ascii-table-1.2.0.jar" Assignment2_Handler part1
@@ -131,28 +131,13 @@ java -cp ".:lib/weka.jar:lib/ascii-table-1.2.0.jar" Assignment2_Handler part2
 
 # Part 3: Feature expansion
 java -cp ".:lib/weka.jar:lib/ascii-table-1.2.0.jar" Assignment2_Handler part3
-
-# Part 4: Feature selection (Decision Tree)
-java -cp ".:lib/weka.jar:lib/ascii-table-1.2.0.jar" Assignment2_Handler part4
-
-# Part 5: Classifier comparison (Random Forest & SVM)
-java -cp ".:lib/weka.jar:lib/ascii-table-1.2.0.jar" Assignment2_Handler part5
 ```
 
-**For Java 9+ users (Recommended - avoids Java reflection warnings):**
+**Parts 4 and 5 (Recommended - avoids Java reflection warnings):**
 
-All parts use Weka, which triggers Java reflection warnings on Java 9+. To suppress these warnings, use the `--add-opens` flags:
+Parts 4 and 5 use advanced Weka features that may trigger Java reflection warnings on Java 9+. To avoid these warnings, use the `--add-opens` flags:
 
 ```bash
-# Part 1: Data combination
-java --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.lang.reflect=ALL-UNNAMED -cp ".:lib/weka.jar:lib/ascii-table-1.2.0.jar" Assignment2_Handler part1
-
-# Part 2: Window tuning
-java --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.lang.reflect=ALL-UNNAMED -cp ".:lib/weka.jar:lib/ascii-table-1.2.0.jar" Assignment2_Handler part2
-
-# Part 3: Feature expansion
-java --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.lang.reflect=ALL-UNNAMED -cp ".:lib/weka.jar:lib/ascii-table-1.2.0.jar" Assignment2_Handler part3
-
 # Part 4: Feature selection (Decision Tree)
 java --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.lang.reflect=ALL-UNNAMED -cp ".:lib/weka.jar:lib/ascii-table-1.2.0.jar" Assignment2_Handler part4
 
@@ -160,28 +145,11 @@ java --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.lang
 java --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.lang.reflect=ALL-UNNAMED -cp ".:lib/weka.jar:lib/ascii-table-1.2.0.jar" Assignment2_Handler part5
 ```
 
-**Note**: The basic command without `--add-opens` flags will still work on all Java versions, but Java 9+ users will see reflection warnings (these do not affect execution or results).
+**Note**: The basic command without `--add-opens` flags will still work, but you may see Java reflection warnings in the console (these do not affect execution or results).
 
-### Run Multiple Parts in Sequence
-
-**Compile and run Parts 1, 2, 3 (Java 8):**
+### Run All Parts
 ```bash
-./compile.sh && java -cp ".:lib/weka.jar:lib/ascii-table-1.2.0.jar" Assignment2_Handler part1 && java -cp ".:lib/weka.jar:lib/ascii-table-1.2.0.jar" Assignment2_Handler part2 && java -cp ".:lib/weka.jar:lib/ascii-table-1.2.0.jar" Assignment2_Handler part3
-```
-
-**Compile and run Parts 1, 2, 3 (Java 9+ without warnings):**
-```bash
-./compile.sh && java --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.lang.reflect=ALL-UNNAMED -cp ".:lib/weka.jar:lib/ascii-table-1.2.0.jar" Assignment2_Handler part1 && java --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.lang.reflect=ALL-UNNAMED -cp ".:lib/weka.jar:lib/ascii-table-1.2.0.jar" Assignment2_Handler part2 && java --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.lang.reflect=ALL-UNNAMED -cp ".:lib/weka.jar:lib/ascii-table-1.2.0.jar" Assignment2_Handler part3
-```
-
-**Run all 5 parts (Java 9+ without warnings):**
-```bash
-./compile.sh && java --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.lang.reflect=ALL-UNNAMED -cp ".:lib/weka.jar:lib/ascii-table-1.2.0.jar" Assignment2_Handler part1 && java --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.lang.reflect=ALL-UNNAMED -cp ".:lib/weka.jar:lib/ascii-table-1.2.0.jar" Assignment2_Handler part2 && java --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.lang.reflect=ALL-UNNAMED -cp ".:lib/weka.jar:lib/ascii-table-1.2.0.jar" Assignment2_Handler part3 && java --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.lang.reflect=ALL-UNNAMED -cp ".:lib/weka.jar:lib/ascii-table-1.2.0.jar" Assignment2_Handler part4 && java --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.lang.reflect=ALL-UNNAMED -cp ".:lib/weka.jar:lib/ascii-table-1.2.0.jar" Assignment2_Handler part5
-```
-
-### Run All Parts (Alternative using 'all' argument)
-```bash
-# Recommended (avoids Java reflection warnings on Java 9+)
+# Recommended (avoids Java reflection warnings for Parts 4 & 5)
 java --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.lang.reflect=ALL-UNNAMED -cp ".:lib/weka.jar:lib/ascii-table-1.2.0.jar" Assignment2_Handler all
 ```
 
@@ -298,20 +266,14 @@ All results are organized in the `results/` folder:
 - Classification uses 10-fold cross-validation for accuracy evaluation
 - Sequential Feature Selection uses forward selection (greedy approach)
 
-### Java Reflection Warnings (All Parts on Java 9+)
-All parts use Weka, which requires access to internal Java classes via reflection. On Java 9+, the JVM's module system restricts this access by default, which triggers warnings like:
+### Java Reflection Warnings (Parts 4 & 5)
+Parts 4 and 5 require access to internal Weka classes that use Java reflection. On Java 9+, the JVM's module system restricts this access by default, which may trigger warnings like:
 
 ```
-WARNING: Illegal reflective access by weka.core.WekaPackageClassLoaderManager
-WARNING: Use --illegal-access=warn to enable warnings of further illegal reflective access operations
-WARNING: All illegal access operations will be denied in a future release
+WARNING: Illegal reflective access by weka...
 ```
 
 **These warnings do NOT affect execution or results** - your program will run successfully regardless. However, to suppress these warnings and run cleanly, use the `--add-opens` flags shown in the "Run Individual Parts" section above. These flags explicitly grant Weka permission to access the required internal Java modules.
-
-**Summary:**
-- **Java 8**: No warnings, use simple commands
-- **Java 9+**: Use `--add-opens` flags to suppress warnings (recommended)
 
 ## Date
 October 2025

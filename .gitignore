@@ -53,23 +53,22 @@ nbdist/
 Thumbs.db
 ehthumbs.db
 Desktop.ini
+*:Zone.Identifier
 
 # Linux
 *~
 
-# Data files (keep raw_data but ignore processed outputs)
+# Data files (NEVER commit data files - too large)
+*.csv
+*.arff
+raw_data/
+raw_data_old/
 formatted_data/
 results/
-!raw_data/*.csv
 
 # Libraries (large files, users should download separately)
 lib/*.jar
 !lib/.gitkeep
-
-# Generated output files
-*.csv
-*.arff
-!raw_data/*.csv
 
 # Configuration files (generated at runtime)
 best_window_config.txt

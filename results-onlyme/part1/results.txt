@@ -1,0 +1,33 @@
+================================================================================
+PART 1: Baseline Accuracy Results
+================================================================================
+
+Configuration:
+  - Window Size: 1 second
+  - Features: 6 (mean, std per axis)
+  - Classifier: Decision Tree (J48)
+  - Validation: 10-fold cross-validation
+
+Dataset Information:
+  - Instances: 6940
+  - Attributes: 7
+  - Classes: 2
+    - hand_wash
+    - non_hand_wash
+
+=== Decision Tree (J48) Results ===
+
+Accuracy: 96.48%
+Kappa: 0.9288
+
+=== Confusion Matrix ===
+3745 93 
+151 2951 
+
+=== Detailed Statistics ===
+=== Detailed Accuracy By Class ===
+
+                 TP Rate  FP Rate  Precision  Recall   F-Measure  MCC      ROC Area  PRC Area  Class
+                 0.976    0.049    0.961      0.976    0.968      0.929    0.975     0.959     hand_wash
+                 0.951    0.024    0.969      0.951    0.960      0.929    0.975     0.970     non_hand_wash
+Weighted Avg.    0.965    0.038    0.965      0.965    0.965      0.929    0.975     0.964     
