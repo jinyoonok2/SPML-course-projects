@@ -62,15 +62,40 @@ formatted_data/
 results/
 !raw_data/*.csv
 
-# Weka library (large file, users should download separately)
-lib/weka.jar
+# Libraries (large files, users should download separately)
+lib/*.jar
+!lib/.gitkeep
+
+# Generated output files
+*.csv
+*.arff
+!raw_data/*.csv
+
+# Configuration files (generated at runtime)
+best_window_config.txt
+
+# Compressed files
+*.zip
+*.tar.gz
+*.rar
+*.7z
 
 # Backup files
 *.bak
 *.swp
 *.tmp
 *~
+.~*
 
 # Build artifacts
 target/
 bin/
+
+# Test outputs
+test_output/
+temp/
+
+# OS and Editor specific
+.vscode/
+.idea/
+*.iml
