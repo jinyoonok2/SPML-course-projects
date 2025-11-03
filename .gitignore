@@ -62,8 +62,9 @@ Desktop.ini
 *.csv
 *.arff
 *.txt
-formatted_data/
-results/
+
+# Submission folders
+submission_project2/
 
 # Libraries (large files, users should download separately)
 lib/*.jar
