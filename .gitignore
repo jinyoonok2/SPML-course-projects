@@ -61,17 +61,13 @@ Desktop.ini
 # Data files (NEVER commit data files - too large)
 *.csv
 *.arff
-raw_data/
-raw_data_old/
+*.txt
 formatted_data/
 results/
 
 # Libraries (large files, users should download separately)
 lib/*.jar
 !lib/.gitkeep
-
-# Configuration files (generated at runtime)
-best_window_config.txt
 
 # Compressed files
 *.zip
