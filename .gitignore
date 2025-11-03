@@ -74,6 +74,12 @@ lib/*.jar
 # Configuration files (generated at runtime)
 best_window_config.txt
 
+# Compressed files
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
 # Backup files
 *.bak
 *.swp
