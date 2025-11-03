@@ -3,7 +3,7 @@
  * ----------------------
  * Part 4: Sequential feature selection with Decision Tree
  * 
- * TODO: Implementation coming soon
+ * 
  */
 
 import java.nio.file.*;
@@ -12,17 +12,16 @@ import static java.util.stream.Collectors.*;
 
 public class Part4_FeatureSelection {
 
-    // === Configure these ===
-    // Build this CSV using the BEST window from Part 2 before running Part 4.
+    // Build this CSV using the BEST window from Part 3 before running Part 4.
     private static final String FEATURES_CSV_PATH = "results/part3/features.csv";
 
     private static final int NUM_FEATURES = 12; 
 
-    // Stop when the best next addition improves accuracy by less than this (absolute %)
+    // Stop when the best next addition improves accuracy by less than this 
     private static final double MIN_IMPROVEMENT = 0.001; // 1%
 
     public static void run() throws Exception {
-        // 1) Read CSV once (do exactly as in Part 2)
+        // 1) Read CSV once 
 
         Path csvPath = Paths.get(FEATURES_CSV_PATH);
         String[][] csvData = null;
