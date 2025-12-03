@@ -179,20 +179,31 @@ public class Part2_WindowTuning {
      * Read the best window size from config file (for Part 3, 4, 5 to use)
      */
     public static int getBestWindowSize(Path baseDir) throws IOException {
-        Path configFile = baseDir.resolve("results/part2/best_window_config.txt");
-        if (!Files.exists(configFile)) {
-            throw new IOException("best_window_config.txt not found in results/part2/. Please run Part 2 first to determine optimal window size.");
-        }
-        
-        try (BufferedReader br = Files.newBufferedReader(configFile, StandardCharsets.UTF_8)) {
-            for (String line; (line = br.readLine()) != null; ) {
-                line = line.trim();
-                if (line.startsWith("BEST_WINDOW_MS=")) {
-                    return Integer.parseInt(line.substring("BEST_WINDOW_MS=".length()));
+        // Try new format first (WadaManager)
+        Path configFile = baseDir.resolve("results/part2/best_config.txt");
+        if (Files.exists(configFile)) {
+            String content = new String(Files.readAllBytes(configFile));
+            for (String line : content.split("\n")) {
+                if (line.startsWith("best_window_ms=")) {
+                    return Integer.parseInt(line.substring("best_window_ms=".length()));
                 }
             }
         }
-        throw new IOException("Invalid config file format");
+        
+        // Fallback to old format 
+        Path oldConfigFile = baseDir.resolve("results/part2/best_window_config.txt");
+        if (Files.exists(oldConfigFile)) {
+            try (BufferedReader br = Files.newBufferedReader(oldConfigFile, StandardCharsets.UTF_8)) {
+                for (String line; (line = br.readLine()) != null; ) {
+                    line = line.trim();
+                    if (line.startsWith("BEST_WINDOW_MS=")) {
+                        return Integer.parseInt(line.substring("BEST_WINDOW_MS=".length()));
+                    }
+                }
+            }
+        }
+        
+        throw new IOException("Best window config not found. Please run Part 2 first to determine optimal window size.");
     }
 
     /**

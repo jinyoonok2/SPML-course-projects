@@ -2,21 +2,25 @@ import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * WadaManager
  * -----------
- * Fixed workflow with no optional arguments.
+ * Unified workflow manager for all assignment parts.
  *
  * Commands (run from the subject folder containing raw_data/):
- *   1) format   : read raw_data/*.csv, drop first line, keep (timestamp,ax,ay,az) -> formatted_data/
- *   2) features : read formatted_data/*.csv, build 1s-window features (mean/std per axis) -> features.csv
+ *   1) format     : read raw_data/*.csv, drop first line, keep (timestamp,ax,ay,az) -> formatted_data/
+ *   2) features   : read formatted_data/*.csv, build 1s-window features (mean/std per axis) -> features.csv
+ *   3) part1      : format + features + train J48 classifier (baseline)
+ *   4) part2      : test multiple window sizes (1s, 2s, 3s, 4s) + find best
+ *   5) part3      : extract 12 features using best window + train J48
  */
 public class WadaManager {
 
     public static void main(String[] args) {
         if (args.length < 1) {
-            System.err.println("Subcommands: format | features");
+            System.err.println("Subcommands: format | features | part1 | part2 | part3 | part4 | part5 | all");
             System.exit(2);
         }
         String cmd = args[0];
@@ -30,11 +34,29 @@ public class WadaManager {
                     Path out = baseDir.resolve("features.csv");
                     features(baseDir, out);
                     break;
+                case "part1":
+                    runPart1(baseDir);
+                    break;
+                case "part2":
+                    runPart2(baseDir);
+                    break;
+                case "part3":
+                    runPart3(baseDir);
+                    break;
+                case "part4":
+                    runPart4(baseDir);
+                    break;
+                case "part5":
+                    runPart5(baseDir);
+                    break;
+                case "all":
+                    runAll(baseDir);
+                    break;
                 default:
                     System.err.println("Unknown subcommand: " + cmd);
                     System.exit(2);
             }
-        } catch (IOException e) {
+        } catch (Exception e) {
             e.printStackTrace();
             System.exit(1);
         }
@@ -235,6 +257,463 @@ public class WadaManager {
             return new double[]{ mx, Math.sqrt(vx), my, Math.sqrt(vy), mz, Math.sqrt(vz) };
         }
     }
+
+    // ---------------- Part 1: Baseline (format + features + classify) ----------------
+    
+    private static void runPart1(Path baseDir) throws Exception {
+        System.out.println("=== Part 1: Baseline Accuracy ===");
+        System.out.println("Processing all raw data with Decision Tree classifier");
+        System.out.println("Window: 1 second, Features: 6 (mean, std per axis)");
+        System.out.println();
+
+        // Create results directory
+        Path part1Dir = baseDir.resolve("results/part1");
+        Files.createDirectories(part1Dir);
+
+        // Step 1: Format data
+        System.out.println("Step 1: Formatting raw data...");
+        format(baseDir);
+
+        // Step 2: Extract features (6 features, 1s window)
+        System.out.println("Step 2: Extracting features (1-second windows)...");
+        Path featuresCsv = part1Dir.resolve("features.csv");
+        features(baseDir, featuresCsv);
+
+        // Step 3: Convert to ARFF and train classifier
+        System.out.println("Step 3: Training Decision Tree classifier...");
+        Path featuresArff = part1Dir.resolve("features.arff");
+        MyWekaUtils.csvToArff(featuresCsv.toString(), featuresArff.toString());
+        
+        double accuracy = MyWekaUtils.trainAndEvaluate(featuresArff.toString(), 1); // J48
+        System.out.printf("✓ Baseline accuracy (J48): %.4f%n", accuracy);
+        
+        System.out.println("Part 1 completed successfully!");
+    }
+
+    // ---------------- Part 2: Window tuning ----------------
+    
+    private static void runPart2(Path baseDir) throws Exception {
+        System.out.println("=== Part 2: Window Size Tuning ===");
+        System.out.println("Testing window sizes: 1s, 2s, 3s, 4s (with 1s sliding)");
+        System.out.println();
+
+        Path formattedDataDir = baseDir.resolve("formatted_data");
+        if (!Files.isDirectory(formattedDataDir)) {
+            System.out.println("Formatted data not found. Running format step...");
+            format(baseDir);
+        }
+
+        Path part2Dir = baseDir.resolve("results/part2");
+        Files.createDirectories(part2Dir);
+
+        int[] windowSizes = {1000, 2000, 3000, 4000}; // ms
+        double bestAccuracy = 0;
+        int bestWindowMs = 1000;
+        
+        StringBuilder results = new StringBuilder();
+        results.append("Window Size (s),Accuracy\n");
+
+        for (int windowMs : windowSizes) {
+            double windowSec = windowMs / 1000.0;
+            System.out.printf("Testing %.0fs window...\n", windowSec);
+            
+            Path featuresCsv = part2Dir.resolve("features_" + (int)windowSec + "s.csv");
+            Path featuresArff = part2Dir.resolve("features_" + (int)windowSec + "s.arff");
+            
+            // Extract features with specific window size
+            extractFeaturesWithWindow(formattedDataDir, featuresCsv, windowMs, 1000); // 1s slide
+            
+            // Train and evaluate
+            MyWekaUtils.csvToArff(featuresCsv.toString(), featuresArff.toString());
+            double accuracy = MyWekaUtils.trainAndEvaluate(featuresArff.toString(), 1); // J48
+            
+            System.out.printf("✓ %.0fs window accuracy: %.4f%n", windowSec, accuracy);
+            results.append(String.format("%.0f,%.4f%n", windowSec, accuracy));
+            
+            if (accuracy > bestAccuracy) {
+                bestAccuracy = accuracy;
+                bestWindowMs = windowMs;
+            }
+        }
+        
+        // Save results and best config
+        Files.write(part2Dir.resolve("window_tuning_results.csv"), results.toString().getBytes());
+        Files.write(part2Dir.resolve("best_config.txt"), 
+                   String.format("best_window_ms=%d\nbest_accuracy=%.4f", bestWindowMs, bestAccuracy).getBytes());
+        
+        System.out.printf("\n✓ Best window: %.0fs (accuracy: %.4f)\n", bestWindowMs/1000.0, bestAccuracy);
+        System.out.println("Part 2 completed successfully!");
+    }
+
+    // ---------------- Part 3: Feature expansion ----------------
+    
+    private static void runPart3(Path baseDir) throws Exception {
+        System.out.println("=== Part 3: Feature Expansion ===");
+        System.out.println("Adding median and RMS features (12 features total)");
+        
+        // Read best window size from Part 2
+        int bestWindowMs = getBestWindowSize(baseDir);
+        System.out.printf("Using optimal window size: %.0fs\n", bestWindowMs/1000.0);
+        System.out.println();
+
+        Path formattedDataDir = baseDir.resolve("formatted_data");
+        if (!Files.isDirectory(formattedDataDir)) {
+            System.out.println("Formatted data not found. Running format step...");
+            format(baseDir);
+        }
+
+        Path part3Dir = baseDir.resolve("results/part3");
+        Files.createDirectories(part3Dir);
+
+        Path featuresCsv = part3Dir.resolve("features.csv");
+        Path featuresArff = part3Dir.resolve("features.arff");
+
+        // Extract 12 features
+        System.out.println("Step 1: Extracting 12 features (mean, std, median, RMS per axis)...");
+        extractExpandedFeatures(formattedDataDir, featuresCsv, bestWindowMs, 1000);
+
+        // Train and evaluate
+        System.out.println("Step 2: Training Decision Tree with 12 features...");
+        MyWekaUtils.csvToArff(featuresCsv.toString(), featuresArff.toString());
+        double accuracy = MyWekaUtils.trainAndEvaluate(featuresArff.toString(), 1); // J48
+        
+        System.out.printf("✓ 12-feature accuracy (J48): %.4f%n", accuracy);
+        System.out.println("Part 3 completed successfully!");
+    }
+
+    // ---------------- Part 4: Feature Selection ----------------
+    
+    private static void runPart4(Path baseDir) throws Exception {
+        System.out.println("=== Part 4: Sequential Feature Selection ===");
+        System.out.println("Finding optimal feature subset using forward selection");
+        System.out.println("Features: 12 available features, Classifier: Decision Tree");
+        System.out.println();
+
+        Path part3FeaturesPath = baseDir.resolve("results/part3/features.csv");
+        if (!Files.exists(part3FeaturesPath)) {
+            System.err.println("Part 3 features not found. Please run Part 3 first.");
+            return;
+        }
+
+        Path part4Dir = baseDir.resolve("results/part4");
+        Files.createDirectories(part4Dir);
+
+        // Read CSV data
+        String[][] csvData = MyWekaUtils.readCSV(part3FeaturesPath.toString());
+        if (csvData == null || csvData.length == 0) {
+            System.err.println("Features CSV is empty.");
+            return;
+        }
+
+        // Run Sequential Feature Selection for Decision Tree
+        SFSResult result = runSequentialFeatureSelection(csvData, 1); // 1 = Decision Tree
+        
+        // Save results
+        saveSFSResults(part4Dir.resolve("dt_sfs_curve.csv"), result);
+        
+        System.out.printf("✓ Best feature subset (%d features): %s%n", 
+                         result.selected.size(), result.selected);
+        System.out.printf("✓ Final accuracy: %.4f%n", result.finalAcc);
+        System.out.println("Part 4 completed successfully!");
+    }
+
+    // ---------------- Part 5: Classifier Comparison ----------------
+    
+    private static void runPart5(Path baseDir) throws Exception {
+        System.out.println("=== Part 5: Classifier Comparison ===");
+        System.out.println("Comparing Decision Tree, Random Forest, and SVM with feature selection");
+        System.out.println();
+
+        Path part3FeaturesPath = baseDir.resolve("results/part3/features.csv");
+        if (!Files.exists(part3FeaturesPath)) {
+            System.err.println("Part 3 features not found. Please run Part 3 first.");
+            return;
+        }
+
+        Path part5Dir = baseDir.resolve("results/part5");
+        Files.createDirectories(part5Dir);
+
+        // Read CSV data
+        String[][] csvData = MyWekaUtils.readCSV(part3FeaturesPath.toString());
+        if (csvData == null || csvData.length == 0) {
+            System.err.println("Features CSV is empty.");
+            return;
+        }
+
+        // Run SFS for all three classifiers
+        System.out.println("Running Sequential Feature Selection for Decision Tree...");
+        SFSResult dtResult = runSequentialFeatureSelection(csvData, 1); // Decision Tree
+        saveSFSResults(part5Dir.resolve("dt_sfs_curve.csv"), dtResult);
+        
+        System.out.println("Running Sequential Feature Selection for Random Forest...");
+        SFSResult rfResult = runSequentialFeatureSelection(csvData, 2); // Random Forest
+        saveSFSResults(part5Dir.resolve("rf_sfs_curve.csv"), rfResult);
+        
+        System.out.println("Running Sequential Feature Selection for SVM...");
+        SFSResult svmResult = runSequentialFeatureSelection(csvData, 3); // SVM
+        saveSFSResults(part5Dir.resolve("svm_sfs_curve.csv"), svmResult);
+
+        // Print comparison
+        System.out.println("\n=== Classifier Comparison Summary ===");
+        printClassifierSummary("Decision Tree", dtResult);
+        printClassifierSummary("Random Forest", rfResult);
+        printClassifierSummary("SVM", svmResult);
+        
+        System.out.println("Part 5 completed successfully!");
+    }
+
+    // ---------------- Enhanced feature extraction methods ----------------
+    
+    private static void extractFeaturesWithWindow(Path formattedDir, Path outCsv, int windowMs, int slideMs) 
+            throws IOException {
+        try (BufferedWriter bw = Files.newBufferedWriter(outCsv, StandardCharsets.UTF_8,
+                StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)) {
+            bw.write("mean_x,std_x,mean_y,std_y,mean_z,std_z,Activity");
+            bw.newLine();
+
+            try (DirectoryStream<Path> ds = Files.newDirectoryStream(formattedDir, "*.csv")) {
+                for (Path f : ds) {
+                    String label = labelFromFilename(f.getFileName().toString());
+                    processFileWithWindow(f, label, bw, windowMs, slideMs, false);
+                }
+            }
+        }
+    }
+    
+    private static void extractExpandedFeatures(Path formattedDir, Path outCsv, int windowMs, int slideMs) 
+            throws IOException {
+        try (BufferedWriter bw = Files.newBufferedWriter(outCsv, StandardCharsets.UTF_8,
+                StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)) {
+            bw.write("mean_x,std_x,mean_y,std_y,mean_z,std_z,median_x,median_y,median_z,rms_x,rms_y,rms_z,Activity");
+            bw.newLine();
+
+            try (DirectoryStream<Path> ds = Files.newDirectoryStream(formattedDir, "*.csv")) {
+                for (Path f : ds) {
+                    String label = labelFromFilename(f.getFileName().toString());
+                    processFileWithWindow(f, label, bw, windowMs, slideMs, true);
+                }
+            }
+        }
+    }
+
+    private static void processFileWithWindow(Path file, String label, BufferedWriter bw, 
+            int windowMs, int slideMs, boolean expandedFeatures) throws IOException {
+        
+        // Read all data points first
+        List<DataPoint> points = new ArrayList<>();
+        try (BufferedReader br = Files.newBufferedReader(file, StandardCharsets.UTF_8)) {
+            for (String line; (line = br.readLine()) != null; ) {
+                line = line.trim();
+                if (line.isEmpty()) continue;
+                String[] toks = line.split(",", -1);
+                if (toks.length != 4) continue;
+                
+                long ts = toLong(toks[0]);
+                double ax = toDouble(toks[1]);
+                double ay = toDouble(toks[2]);
+                double az = toDouble(toks[3]);
+                points.add(new DataPoint(ts, ax, ay, az));
+            }
+        }
+        
+        if (points.isEmpty()) return;
+        
+        // Extract windows with sliding
+        long startTime = points.get(0).timestamp;
+        long endTime = points.get(points.size() - 1).timestamp;
+        
+        for (long windowStart = startTime; windowStart + windowMs <= endTime; windowStart += slideMs) {
+            long windowEnd = windowStart + windowMs;
+            
+            List<DataPoint> windowPoints = points.stream()
+                .filter(p -> p.timestamp >= windowStart && p.timestamp < windowEnd)
+                .collect(java.util.stream.Collectors.toList());
+                
+            if (windowPoints.size() < 10) continue; // Skip windows with too few points
+            
+            if (expandedFeatures) {
+                double[] features = extractAllFeatures(windowPoints);
+                bw.write(String.format("%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%s",
+                    features[0], features[1], features[2], features[3], features[4], features[5],
+                    features[6], features[7], features[8], features[9], features[10], features[11], label));
+            } else {
+                double[] features = extractBasicFeatures(windowPoints);
+                bw.write(String.format("%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%s",
+                    features[0], features[1], features[2], features[3], features[4], features[5], label));
+            }
+            bw.newLine();
+        }
+    }
+    
+    private static double[] extractBasicFeatures(List<DataPoint> points) {
+        Stats stats = new Stats();
+        for (DataPoint p : points) {
+            stats.add(p.ax, p.ay, p.az);
+        }
+        return stats.meanStd();
+    }
+    
+    private static double[] extractAllFeatures(List<DataPoint> points) {
+        // Extract basic features (mean, std)
+        double[] basic = extractBasicFeatures(points);
+        
+        // Extract median and RMS
+        double[] x = points.stream().mapToDouble(p -> p.ax).sorted().toArray();
+        double[] y = points.stream().mapToDouble(p -> p.ay).sorted().toArray();
+        double[] z = points.stream().mapToDouble(p -> p.az).sorted().toArray();
+        
+        double medianX = median(x);
+        double medianY = median(y);
+        double medianZ = median(z);
+        
+        double rmsX = Math.sqrt(points.stream().mapToDouble(p -> p.ax * p.ax).average().orElse(0));
+        double rmsY = Math.sqrt(points.stream().mapToDouble(p -> p.ay * p.ay).average().orElse(0));
+        double rmsZ = Math.sqrt(points.stream().mapToDouble(p -> p.az * p.az).average().orElse(0));
+        
+        return new double[]{basic[0], basic[1], basic[2], basic[3], basic[4], basic[5],
+                           medianX, medianY, medianZ, rmsX, rmsY, rmsZ};
+    }
+    
+    private static double median(double[] sorted) {
+        int n = sorted.length;
+        if (n % 2 == 0) {
+            return (sorted[n/2-1] + sorted[n/2]) / 2.0;
+        } else {
+            return sorted[n/2];
+        }
+    }
+    
+    private static int getBestWindowSize(Path baseDir) throws IOException {
+        Path configFile = baseDir.resolve("results/part2/best_config.txt");
+        if (!Files.exists(configFile)) {
+            System.err.println("Warning: Part 2 config not found, using default 1s window");
+            return 1000;
+        }
+        
+        String content = new String(Files.readAllBytes(configFile));
+        for (String line : content.split("\n")) {
+            if (line.startsWith("best_window_ms=")) {
+                return Integer.parseInt(line.substring("best_window_ms=".length()));
+            }
+        }
+        return 1000;
+    }
+    
+    // Helper class for data points
+    private static class DataPoint {
+        long timestamp;
+        double ax, ay, az;
+        
+        DataPoint(long timestamp, double ax, double ay, double az) {
+            this.timestamp = timestamp;
+            this.ax = ax;
+            this.ay = ay;
+            this.az = az;
+        }
+    }
+    
+    // Helper class for SFS results
+    private static class SFSResult {
+        List<Integer> selected = new ArrayList<>();
+        List<Double> accCurve = new ArrayList<>();
+        double finalAcc = 0.0;
+        int iterations = 0;
+    }
+    
+    // Sequential Feature Selection implementation
+    private static SFSResult runSequentialFeatureSelection(String[][] csvData, int classifierType) 
+            throws Exception {
+        
+        final int NUM_FEATURES = 12;
+        final double MIN_IMPROVEMENT = 0.001; // 0.1%
+        
+        SFSResult result = new SFSResult();
+        Set<Integer> available = new HashSet<>();
+        for (int i = 0; i < NUM_FEATURES; i++) {
+            available.add(i);
+        }
+        
+        double bestAcc = 0.0;
+        
+        while (!available.isEmpty()) {
+            int bestFeature = -1;
+            double bestIterAcc = bestAcc;
+            
+            // Try adding each available feature
+            for (int candidate : available) {
+                List<Integer> testSet = new ArrayList<>(result.selected);
+                testSet.add(candidate);
+                
+                double acc = MyWekaUtils.evaluateFeatureSubset(csvData, testSet, classifierType);
+                
+                if (acc > bestIterAcc) {
+                    bestIterAcc = acc;
+                    bestFeature = candidate;
+                }
+            }
+            
+            // Check if improvement is significant
+            if (bestFeature == -1 || (bestIterAcc - bestAcc) < MIN_IMPROVEMENT) {
+                break; // No significant improvement
+            }
+            
+            // Add best feature
+            result.selected.add(bestFeature);
+            available.remove(bestFeature);
+            bestAcc = bestIterAcc;
+            result.accCurve.add(bestAcc);
+            result.iterations++;
+            
+            System.out.printf("  Iteration %d: Added feature %d, accuracy = %.4f%n", 
+                             result.iterations, bestFeature, bestAcc);
+        }
+        
+        result.finalAcc = bestAcc;
+        return result;
+    }
+    
+    private static void saveSFSResults(Path outputPath, SFSResult result) throws IOException {
+        try (BufferedWriter bw = Files.newBufferedWriter(outputPath, StandardCharsets.UTF_8)) {
+            bw.write("Iteration,Accuracy\n");
+            for (int i = 0; i < result.accCurve.size(); i++) {
+                bw.write(String.format("%d,%.4f\n", i + 1, result.accCurve.get(i)));
+            }
+        }
+    }
+    
+    private static void printClassifierSummary(String classifierName, SFSResult result) {
+        System.out.printf("%-15s: %d features, accuracy = %.4f, iterations = %d%n",
+                         classifierName, result.selected.size(), result.finalAcc, result.iterations);
+        System.out.printf("                Selected features: %s%n", result.selected);
+    }
+    
+    // ---------------- Run All Parts ----------------
+    
+    private static void runAll(Path baseDir) throws Exception {
+        System.out.println("=" .repeat(80));
+        System.out.println("RUNNING ALL PARTS OF ASSIGNMENT 2");
+        System.out.println("=" .repeat(80));
+        System.out.println();
+        
+        runPart1(baseDir);
+        System.out.println();
+        
+        runPart2(baseDir);
+        System.out.println();
+        
+        runPart3(baseDir);
+        System.out.println();
+        
+        runPart4(baseDir);
+        System.out.println();
+        
+        runPart5(baseDir);
+        System.out.println();
+        
+        System.out.println("=" .repeat(80));
+        System.out.println("ALL PARTS COMPLETED SUCCESSFULLY!");
+        System.out.println("=" .repeat(80));
+    }
 }
 
 // -----------------------------------------------------------------------------
@@ -243,4 +722,19 @@ public class WadaManager {
 //
 // # 2) Features: build 1s-window features -> features.csv
 // java WadaManager features
+//
+// # 3) Part 1: Complete baseline analysis (format + features + J48)
+// java WadaManager part1
+//
+// # 4) Part 2: Window size tuning (1s, 2s, 3s, 4s)  
+// java WadaManager part2
+//
+// # 5) Part 3: Feature expansion (12 features + J48)
+// java WadaManager part3
+//
+// # 6) Part 4: Sequential feature selection (Decision Tree)
+// java WadaManager part4
+//
+// # 7) Part 5: Classifier comparison (DT, RF, SVM with SFS)
+// java WadaManager part5
 // -----------------------------------------------------------------------------
