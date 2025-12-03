@@ -3,186 +3,224 @@
 ## Overview
 This assignment builds upon Assignment 1 to improve gesture recognition accuracy through parameter tuning, feature engineering, and classifier comparison. The project uses smartwatch accelerometer data to classify hand-washing gestures.
 
+**New Modular Architecture**: The codebase has been refactored into a clean 5-engine architecture that supports per-classifier optimization and modular experiment configurations.
+
 ## Project Structure
 
 ```
 SPML-course-projects/
-├── raw_data/                           # All raw CSV files from smartwatch (Assignment 1 + 2)
+├── raw_data/                           # All raw CSV files from smartwatch
 │   └── G5NZCJ022402200-Assignment*-Jinyoon-*-hand_wash-*.csv
 ├── formatted_data/                     # Cleaned data (timestamp, ax, ay, az)
-├── results/                            # Results organized by part
-│   ├── part1/                          # Part 1 results
-│   │   ├── features.csv
-│   │   ├── features.arff
-│   │   └── results.txt
-│   ├── part2/                          # Part 2 results (different window sizes)
-│   │   ├── features_1s.csv
-│   │   ├── features_1s.arff
-│   │   ├── features_2s.csv
-│   │   ├── features_2s.arff
-│   │   ├── features_3s.csv
-│   │   ├── features_3s.arff
-│   │   ├── features_4s.csv
-│   │   ├── features_4s.arff
-│   │   ├── best_window_config.txt
-│   │   └── results.txt
-│   ├── part3/                          # Part 3 results (12 features)
-│   │   ├── features.csv
-│   │   ├── features.arff
-│   │   └── results.txt
-│   ├── part4/                          # Part 4 results (feature selection)
-│   └── part5/                          # Part 5 results (classifier comparison)
+├── results/                            # Results organized by classifier and experiment
+│   ├── baseline/                       # Baseline results (all classifiers)
+│   │   └── baseline_results.txt
+│   ├── window_optimization/            # Window tuning per classifier
+│   │   ├── j48_window_optimization.txt
+│   │   ├── random_forest_window_optimization.txt
+│   │   └── svm_window_optimization.txt
+│   ├── master_datasets/                # Master datasets per classifier
+│   │   ├── j48_master_dataset_12features.csv
+│   │   ├── random_forest_master_dataset_12features.csv
+│   │   └── svm_master_dataset_12features.csv
+│   ├── feature_selection/              # SFS results per classifier
+│   │   ├── j48_sfs_results.txt
+│   │   ├── random_forest_sfs_results.txt
+│   │   └── svm_sfs_results.txt
+│   └── final_report/                   # Complete experiment report
+├── legacy/                             # Old Part1-5 files (archived)
+│   ├── Part1_DataProcessor.java
+│   ├── Part2_WindowTuning.java
+│   ├── Part3_FeatureExpansion.java
+│   ├── Part4_FeatureSelection.java
+│   ├── Part5_ClassifierComparison.java
+│   ├── WadaManager_old.java
+│   └── Assignment2_Handler.java
 ├── lib/
-│   ├── weka.jar                        # Weka library (download separately)
-│   └── ascii-table-1.2.0.jar           # ASCII Table library (optional)
-├── check_jdk.sh                        # Script to verify JDK and Weka installation
+│   └── weka.jar                        # Weka library 3.8.6
+├── check_jdk.sh                        # Script to verify JDK installation
 ├── compile.sh                          # Script to clean and compile all Java files
-├── Assignment2_Handler.java            # Main handler/entry point for all parts
-├── Part1_DataProcessor.java            # Part 1: Process all data & baseline Decision Tree
-├── Part2_WindowTuning.java             # Part 2: Time window experiments (1s, 2s, 3s, 4s)
-├── Part3_FeatureExpansion.java         # Part 3: Add median & RMS features
-├── Part4_FeatureSelection.java         # Part 4: Sequential feature selection (Decision Tree)
-├── Part5_ClassifierComparison.java     # Part 5: Compare Random Forest & SVM
+├── ExperimentRunner.java               # Main entry point (NEW!)
+├── DataManager.java                    # Data processing engine (NEW!)
+├── FeatureEngine.java                  # Feature extraction engine (NEW!)
+├── OptimizationEngine.java             # Optimization and SFS engine (NEW!)
+├── MLEngine.java                       # ML operations engine (NEW!)
+├── MyWekaUtils.java                    # Core Weka utilities (unchanged)
 └── README.md
 ```
 
-Each Part file contains all necessary functions for feature extraction, ARFF conversion, and Weka classification.
+### New Modular Architecture (5 Engines)
 
-## Assignment Parts
+**ExperimentRunner** - Main entry point and command interface
+- Orchestrates all experiments
+- Command-line interface for running experiments
+- Supports both structured and custom modular experiments
 
-### Part 1: Process All Data with Decision Tree Baseline
-- **Goal**: Process all raw data (Assignment 1 + 2 combined) and establish baseline accuracy
-- **Implementation**: `Part1_DataProcessor.java`
-- **Features**: 6 features (mean, std per axis)
-- **Window**: 1 second
-- **Classifier**: Decision Tree
-- **Output**: Baseline accuracy with complete dataset
+**DataManager** - Raw data processing and format conversion
+- Format raw CSV files (drop sensor_type, accuracy columns)
+- Convert CSV to ARFF format
+- Extract activity labels from filenames
 
-### Part 2: Time Window Tuning
-- **Goal**: Test different time windows (1s, 2s, 3s, 4s) with 1-second sliding window
-- **Implementation**: `Part2_WindowTuning.java`
-- **Features**: 6 features (mean, std per axis)
-- **Classifier**: Decision Tree
-- **Output**: Accuracy for each window size to identify optimal time interval
-- **Note**: Saves best window size to `best_window_config.txt` for use in Parts 3, 4, 5
+**FeatureEngine** - Feature extraction and engineering
+- Extract basic features (6): mean, std per axis
+- Extract expanded features (12): mean, std, median, RMS per axis
+- Sliding window feature extraction (configurable window size)
 
-### Part 3: Feature Expansion
-- **Goal**: Add median and RMS (Root Mean Square) features
-- **Implementation**: `Part3_FeatureExpansion.java`
-- **Features**: 12 features (mean, std, median, RMS per axis)
-- **Window**: Best window from Part 2 (automatically loaded from config)
-- **Classifier**: Decision Tree
-- **Output**: Accuracy improvement with expanded features
+**OptimizationEngine** - Parameter optimization and feature selection
+- Window size optimization per classifier (tests 1s-4s windows)
+- Sequential Feature Selection (SFS) per classifier
+- Saves/loads optimization configurations
 
-### Part 4: Sequential Feature Selection (Decision Tree)
-- **Goal**: Find optimal feature subset using forward selection
-- **Implementation**: `Part4_FeatureSelection.java`
-- **Features**: Sequential selection from 12 features
-- **Window**: Best window from Part 2
-- **Classifier**: Decision Tree
-- **Output**: 
-  - Selected feature subset
-  - Accuracy progression as features are added
-  - Comparison with Part 3 (all 12 features)
+**MLEngine** - Machine learning operations and evaluation
+- Modular experiment configuration system
+- Per-classifier baseline evaluation
+- Complete experiment pipeline orchestration
+- Result reporting and persistence
 
-### Part 5: Classifier Comparison
-- **Goal**: Compare Random Forest and SVM with feature selection
-- **Implementation**: `Part5_ClassifierComparison.java`
-- **Features**: Sequential selection from 12 features (separate for each classifier)
-- **Window**: Best window from Part 2
-- **Classifiers**: Random Forest, SVM
-- **Output**: 
-  - Selected features for each classifier
-  - Accuracy progression for each classifier
-  - Best classifier overall (Decision Tree vs. Random Forest vs. SVM)
+**MyWekaUtils** - Core Weka utilities (unchanged from original)
+
+## Experiment Workflow
+
+### Per-Classifier Optimization Pipeline
+
+The new architecture implements a per-classifier optimization workflow where each classifier (J48, RandomForest, SVM) gets its own:
+
+1. **Baseline Evaluation** (Step 1)
+   - All classifiers tested with 6 basic features, 1s window
+   - Establishes baseline performance for each classifier
+
+2. **Window Optimization** (Step 2)
+   - Each classifier tested with 1s, 2s, 3s, 4s windows
+   - Each classifier gets its own optimal window size
+   - Results saved per classifier
+
+3. **Master Dataset Generation** (Step 3)
+   - Each classifier gets a master dataset with:
+     - 12 expanded features (mean, std, median, RMS per axis)
+     - Its own optimal window size from Step 2
+   - 3 separate master datasets created (one per classifier)
+
+4. **Sequential Feature Selection** (Step 4)
+   - SFS performed on each classifier's master dataset
+   - Each classifier selects its own optimal feature subset
+   - Forward selection with MIN_IMPROVEMENT threshold (0.001)
+
+5. **Final Comparison** (Step 5)
+   - Compare all classifiers using their SFS-selected features
+   - SFS results ARE the final comparison (no separate evaluation)
+   - Determine best overall classifier and configuration
+
+### Modular Experiment Configuration
+
+The new `ExperimentConfig` system allows mixing and matching any combination:
+- **Features**: Basic (6) or Expanded (12)
+- **Window**: Any size (1000ms - 4000ms)
+- **Classifier**: J48 (Decision Tree), RandomForest, or SVM
+- **Feature Selection**: On or Off
+
+This enables flexible experimentation and custom workflows.
 
 ## Usage
 
-### Check System Requirements
+### Prerequisites
+
+1. **Install JDK** (if not already installed):
 ```bash
+# Ubuntu/Debian
+sudo apt install default-jdk
+
+# Check installation
 ./check_jdk.sh
 ```
-This script verifies:
-- JDK installation and version (requires JDK 8+)
-- Weka library presence (lib/weka.jar)
 
-### Compile All Java Files
+2. **Download Weka Library**:
 ```bash
-# Clean and compile
-./compile.sh
-
-# Clean only (remove .class files without recompiling)
-./compile.sh --clean
+# Download Weka 3.8.6
+cd lib
+wget https://sourceforge.net/projects/weka/files/weka-3-8/3.8.6/weka-3-8-6.zip
+unzip weka-3-8-6.zip
+mv weka-3-8-6/weka.jar .
+rm -rf weka-3-8-6 weka-3-8-6.zip
+cd ..
 ```
+
+### Compile
+
+```bash
+./compile.sh
+```
+
 This script:
 - Removes all existing .class files
-- Recompiles all Java files in the directory (unless using `--clean`)
+- Compiles all Java files
 - Verifies successful compilation
 
-### Run Individual Parts
+### Run Experiments
 
-**For Java 8 users (no warnings):**
+#### Complete Pipeline (Recommended for first run)
 ```bash
-# Part 1: Data combination
-java -cp ".:lib/weka.jar:lib/ascii-table-1.2.0.jar" Assignment2_Handler part1
-
-# Part 2: Window tuning
-java -cp ".:lib/weka.jar:lib/ascii-table-1.2.0.jar" Assignment2_Handler part2
-
-# Part 3: Feature expansion
-java -cp ".:lib/weka.jar:lib/ascii-table-1.2.0.jar" Assignment2_Handler part3
-
-# Part 4: Feature selection (Decision Tree)
-java -cp ".:lib/weka.jar:lib/ascii-table-1.2.0.jar" Assignment2_Handler part4
-
-# Part 5: Classifier comparison (Random Forest & SVM)
-java -cp ".:lib/weka.jar:lib/ascii-table-1.2.0.jar" Assignment2_Handler part5
+# Run complete per-classifier optimization pipeline
+java -cp ".:lib/weka.jar" ExperimentRunner experiment
 ```
 
-**For Java 9+ users (Recommended - avoids Java reflection warnings):**
+This executes:
+1. Baseline evaluation (all classifiers)
+2. Window optimization (per classifier)
+3. Master dataset generation (per classifier)
+4. Sequential feature selection (per classifier)
+5. Final comparison report
 
-All parts use Weka, which triggers Java reflection warnings on Java 9+. To suppress these warnings, use the `--add-opens` flags:
+#### Individual Commands
 
 ```bash
-# Part 1: Data combination
-java --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.lang.reflect=ALL-UNNAMED -cp ".:lib/weka.jar:lib/ascii-table-1.2.0.jar" Assignment2_Handler part1
+# 1. Baseline evaluation (all classifiers, 6 features, 1s window)
+java -cp ".:lib/weka.jar" ExperimentRunner baseline
 
-# Part 2: Window tuning
-java --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.lang.reflect=ALL-UNNAMED -cp ".:lib/weka.jar:lib/ascii-table-1.2.0.jar" Assignment2_Handler part2
+# 2. Window optimization (find optimal window per classifier)
+java -cp ".:lib/weka.jar" ExperimentRunner optimize
 
-# Part 3: Feature expansion
-java --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.lang.reflect=ALL-UNNAMED -cp ".:lib/weka.jar:lib/ascii-table-1.2.0.jar" Assignment2_Handler part3
+# 3. Feature expansion (create master datasets per classifier)
+java -cp ".:lib/weka.jar" ExperimentRunner features
 
-# Part 4: Feature selection (Decision Tree)
-java --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.lang.reflect=ALL-UNNAMED -cp ".:lib/weka.jar:lib/ascii-table-1.2.0.jar" Assignment2_Handler part4
+# 4. Sequential feature selection (per classifier)
+java -cp ".:lib/weka.jar" ExperimentRunner selection
+# OR
+java -cp ".:lib/weka.jar" ExperimentRunner compare
 
-# Part 5: Classifier comparison (Random Forest & SVM)
-java --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.lang.reflect=ALL-UNNAMED -cp ".:lib/weka.jar:lib/ascii-table-1.2.0.jar" Assignment2_Handler part5
+# Data processing only
+java -cp ".:lib/weka.jar" ExperimentRunner format   # Format raw data
+java -cp ".:lib/weka.jar" ExperimentRunner extract  # Extract basic features
 ```
 
-**Note**: The basic command without `--add-opens` flags will still work on all Java versions, but Java 9+ users will see reflection warnings (these do not affect execution or results).
+#### Modular Custom Experiments
 
-### Run Multiple Parts in Sequence
+Mix and match any configuration:
 
-**Compile and run Parts 1, 2, 3 (Java 8):**
 ```bash
-./compile.sh && java -cp ".:lib/weka.jar:lib/ascii-table-1.2.0.jar" Assignment2_Handler part1 && java -cp ".:lib/weka.jar:lib/ascii-table-1.2.0.jar" Assignment2_Handler part2 && java -cp ".:lib/weka.jar:lib/ascii-table-1.2.0.jar" Assignment2_Handler part3
+# Custom experiment: <features> <window> <classifier> [sfs]
+# Features: 'basic' (6) or 'expanded' (12)
+# Window: 1000-4000 (milliseconds)
+# Classifier: 'J48', 'RF', or 'SVM'
+# SFS: optional flag to enable feature selection
+
+# Example 1: Basic features, 2s window, J48
+java -cp ".:lib/weka.jar" ExperimentRunner custom basic 2000 J48
+
+# Example 2: Expanded features, 3s window, SVM, with SFS
+java -cp ".:lib/weka.jar" ExperimentRunner custom expanded 3000 SVM sfs
+
+# Example 3: Expanded features, 1s window, RandomForest
+java -cp ".:lib/weka.jar" ExperimentRunner custom expanded 1000 RF
+
+# Example 4: Basic features, 4s window, SVM, with SFS
+java -cp ".:lib/weka.jar" ExperimentRunner custom basic 4000 SVM sfs
 ```
 
-**Compile and run Parts 1, 2, 3 (Java 9+ without warnings):**
-```bash
-./compile.sh && java --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.lang.reflect=ALL-UNNAMED -cp ".:lib/weka.jar:lib/ascii-table-1.2.0.jar" Assignment2_Handler part1 && java --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.lang.reflect=ALL-UNNAMED -cp ".:lib/weka.jar:lib/ascii-table-1.2.0.jar" Assignment2_Handler part2 && java --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.lang.reflect=ALL-UNNAMED -cp ".:lib/weka.jar:lib/ascii-table-1.2.0.jar" Assignment2_Handler part3
-```
+#### Help
 
-**Run all 5 parts (Java 9+ without warnings):**
 ```bash
-./compile.sh && java --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.lang.reflect=ALL-UNNAMED -cp ".:lib/weka.jar:lib/ascii-table-1.2.0.jar" Assignment2_Handler part1 && java --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.lang.reflect=ALL-UNNAMED -cp ".:lib/weka.jar:lib/ascii-table-1.2.0.jar" Assignment2_Handler part2 && java --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.lang.reflect=ALL-UNNAMED -cp ".:lib/weka.jar:lib/ascii-table-1.2.0.jar" Assignment2_Handler part3 && java --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.lang.reflect=ALL-UNNAMED -cp ".:lib/weka.jar:lib/ascii-table-1.2.0.jar" Assignment2_Handler part4 && java --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.lang.reflect=ALL-UNNAMED -cp ".:lib/weka.jar:lib/ascii-table-1.2.0.jar" Assignment2_Handler part5
-```
-
-### Run All Parts (Alternative using 'all' argument)
-```bash
-# Recommended (avoids Java reflection warnings on Java 9+)
-java --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.lang.reflect=ALL-UNNAMED -cp ".:lib/weka.jar:lib/ascii-table-1.2.0.jar" Assignment2_Handler all
+# Show all available commands
+java -cp ".:lib/weka.jar" ExperimentRunner help
 ```
 
 ## Key Features
@@ -266,52 +304,84 @@ For Windows users, you have two options:
 - **Note**: Windows uses `;` as classpath separator, not `:`
 
 ## Dependencies
-- **Java**: JDK 8 or higher
-- **Weka**: 3.8.x or higher (place `weka.jar` in `lib/` directory)
-  - Download from: https://www.cs.waikato.ac.nz/ml/weka/
-- **ASCII Table**: 1.2.0 (optional, for better formatted output tables)
-  - Download: `wget -P lib https://repo1.maven.org/maven2/com/github/freva/ascii-table/1.2.0/ascii-table-1.2.0.jar`
-  - Or manually download and place in `lib/` folder
+- **Java**: JDK 8 or higher (tested with OpenJDK 21)
+- **Weka**: 3.8.6 (place `weka.jar` in `lib/` directory)
+  - Download: https://sourceforge.net/projects/weka/files/weka-3-8/3.8.6/
+  - Or use wget (see Prerequisites section above)
 
-## Submission Deliverables
-1. **features.csv** - Final feature file (from best performing part, found in `results/` folder)
-2. **Report** - Results for all 5 parts including:
-   - Part 1: Baseline accuracy with complete dataset
-   - Part 2: Accuracy for each window size (1s, 2s, 3s, 4s)
-   - Part 3: Accuracy with expanded features (12 features)
-   - Part 4: Selected features and accuracy progression (Decision Tree)
-   - Part 5: Selected features and accuracy progression (Random Forest & SVM)
-   - Conclusion: Best classifier and configuration
+## Output Files
 
-## Output Organization
-All results are organized in the `results/` folder:
-- `results/part1/` - Baseline with 1s windows, 6 features
-- `results/part2/` - Window tuning results (1s, 2s, 3s, 4s)
-- `results/part3/` - Feature expansion with 12 features
-- `results/part4/` - Feature selection (Decision Tree)
-- `results/part5/` - Classifier comparison (Random Forest & SVM)
-   - Conclusion: Best classifier and configuration
+Results are organized by experiment type:
+
+```
+results/
+├── baseline/
+│   └── baseline_results.txt              # All classifiers baseline
+├── window_optimization/
+│   ├── j48_window_optimization.txt       # J48 window results (1s-4s)
+│   ├── random_forest_window_optimization.txt
+│   ├── svm_window_optimization.txt
+│   └── optimal_window_config.txt         # Saved optimal windows
+├── master_datasets/
+│   ├── j48_master_dataset_12features.csv          # J48's optimal config
+│   ├── random_forest_master_dataset_12features.csv
+│   └── svm_master_dataset_12features.csv
+├── feature_selection/
+│   ├── j48_sfs_results.txt               # J48 SFS progression
+│   ├── random_forest_sfs_results.txt
+│   └── svm_sfs_results.txt
+└── final_report/
+    └── experiment_report.txt             # Complete summary
+```
+
+## Legacy Files
+
+Old Part1-5 files have been moved to `legacy/` folder for reference:
+- `Part1_DataProcessor.java` → Replaced by DataManager + MLEngine baseline
+- `Part2_WindowTuning.java` → Replaced by OptimizationEngine window optimization
+- `Part3_FeatureExpansion.java` → Replaced by FeatureEngine expanded features
+- `Part4_FeatureSelection.java` → Replaced by OptimizationEngine SFS
+- `Part5_ClassifierComparison.java` → Replaced by MLEngine complete pipeline
+- `WadaManager_old.java` → Replaced by ExperimentRunner
+- `Assignment2_Handler.java` → Replaced by ExperimentRunner
+
+These files are kept for reference but are no longer used in the new architecture.
 
 ## Notes
 - Raw data files use naming convention: `WatchID-AssignmentX-Subject-Hand-Activity-Info-DateTime.csv`
 - Activity labels extracted from filenames: `hand_wash`, `non_hand_wash`
 - Classification uses 10-fold cross-validation for accuracy evaluation
-- Sequential Feature Selection uses forward selection (greedy approach)
+- Sequential Feature Selection uses forward selection with MIN_IMPROVEMENT = 0.001
+- Each classifier is optimized independently for maximum performance
+- SFS results are the final comparison (no separate evaluation step needed)
 
-### Java Reflection Warnings (All Parts on Java 9+)
-All parts use Weka, which requires access to internal Java classes via reflection. On Java 9+, the JVM's module system restricts this access by default, which triggers warnings like:
+## Platform Compatibility
 
-```
-WARNING: Illegal reflective access by weka.core.WekaPackageClassLoaderManager
-WARNING: Use --illegal-access=warn to enable warnings of further illegal reflective access operations
-WARNING: All illegal access operations will be denied in a future release
-```
+This project is compatible with **Linux, macOS, and Windows**:
 
-**These warnings do NOT affect execution or results** - your program will run successfully regardless. However, to suppress these warnings and run cleanly, use the `--add-opens` flags shown in the "Run Individual Parts" section above. These flags explicitly grant Weka permission to access the required internal Java modules.
+### Linux & macOS ✅
+- Shell scripts (`check_jdk.sh`, `compile.sh`) work natively
+- Use `:` as classpath separator
+- All commands work as shown above
 
-**Summary:**
-- **Java 8**: No warnings, use simple commands
-- **Java 9+**: Use `--add-opens` flags to suppress warnings (recommended)
+### Windows
+**Option 1: WSL (Windows Subsystem for Linux)** - Recommended
+- Install WSL and run commands as-is
+- Everything works the same as Linux
+
+**Option 2: Command Prompt/PowerShell**
+- Replace `:` with `;` in classpath:
+  ```bash
+  # Instead of:
+  java -cp ".:lib/weka.jar" ExperimentRunner experiment
+  
+  # Use:
+  java -cp ".;lib/weka.jar" ExperimentRunner experiment
+  ```
+- Manually compile:
+  ```bash
+  javac -cp ".;lib/weka.jar" *.java
+  ```
 
 ## Date
-October 2025
+December 2025

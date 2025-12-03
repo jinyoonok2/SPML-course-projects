@@ -1,0 +1,52 @@
+# ML Pipeline Execution Order Verification
+
+## ✅ Correct Pipeline (Matches Assignment Structure)
+
+### Step 1: Data Preparation & Baseline
+- **Engine**: DataManager + FeatureEngine + MLEngine
+- **Action**: Format raw data → Extract 6 basic features (1s window) → Train J48
+- **Output**: Baseline accuracy
+- **Equivalent**: Part 1
+
+### Step 2: Window Size Optimization  
+- **Engine**: OptimizationEngine
+- **Action**: Test 1s, 2s, 3s, 4s windows → Find optimal window
+- **Output**: Best window size (saved for later steps)
+- **Equivalent**: Part 2
+
+### Step 3: Feature Expansion
+- **Engine**: FeatureEngine
+- **Action**: Extract 12 features (mean, std, median, RMS) using optimal window
+- **Output**: Enriched feature dataset for SFS
+- **Equivalent**: Part 3
+
+### Step 4: Sequential Feature Selection & Comparison
+- **Engine**: OptimizationEngine
+- **Action**: Run SFS for J48, RandomForest, SVM → Compare SFS results
+- **Output**: Selected features + final accuracy for each classifier
+- **Equivalent**: Part 4 + Part 5 combined
+
+### Final Output
+- **Best classifier identified** (highest SFS accuracy)
+- **SFS curves and selected features** for all 3 classifiers
+- **Comprehensive report** with all intermediate results
+
+## 🎯 Key Architecture Points
+
+✅ **Modular engines** - Each handles specific expertise
+✅ **Correct ML flow** - Matches standard pipeline order
+✅ **No "Part" naming** - Clean functional organization
+✅ **SFS is comparison** - Part 5 doesn't evaluate on full features
+✅ **Code reuse** - ~90% of original implementation preserved
+
+## 📋 Command Mapping
+
+| Command | Pipeline Steps | Description |
+|---------|---------------|-------------|
+| `baseline` | Step 1 only | Quick baseline with 6 features |
+| `optimize` | Step 2 only | Find optimal window |
+| `features` | Step 3 only | Expand to 12 features |
+| `selection` | Step 4 | SFS for all classifiers |
+| `compare` | Step 4 | Same as selection (SFS IS comparison) |
+| `experiment` | Steps 1-4 | Complete pipeline |
+

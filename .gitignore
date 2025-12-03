@@ -59,15 +59,23 @@ Desktop.ini
 *~
 
 # Data files (NEVER commit data files - too large)
-*.csv
+raw_data/*.csv
+formatted_data/*.csv
 *.arff
-*.txt
 
-# Submission folders
-submission_project2/
+# Result files (generated from experiments)
+results/**/*.txt
+results/**/*.csv
+results/**/*.arff
+results/**/optimal_window_config.txt
+
+# Master datasets (generated, per-classifier)
+results/master_datasets/*.csv
 
 # Libraries (large files, users should download separately)
 lib/*.jar
+lib/weka-3-8-6/
+lib/*.zip
 !lib/.gitkeep
 
 # Compressed files
@@ -90,6 +98,10 @@ bin/
 # Test outputs
 test_output/
 temp/
+
+# Legacy/archived files (kept in repo but might have local modifications)
+# legacy/ folder is committed but local changes ignored
+legacy/**/*.class
 
 # OS and Editor specific
 .vscode/
