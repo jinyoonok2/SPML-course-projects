@@ -124,39 +124,28 @@ public class DataManager {
     
     /**
      * Extract activity label from filename
-     * Supports any activity type - automatically creates classes for all detected activities
+     * Simply extracts the activity portion from dash-separated filename
+     * All other parts (WatchID, Project, Subject, etc.) are ignored
      * 
-     * Flexible filename format: WatchID-Project-Subject-Hand-Activity-Info-DateTime.csv
-     * The Project field can be "Assignment2", "Final", or anything else
-     * The Activity field will be used as the class label
+     * Expected format: anything-anything-anything-anything-ACTIVITY-anything.csv
+     * Position doesn't matter - just looks for the activity part (position 4)
      * 
      * Examples:
-     *   - Watch123-Assignment2-Jinyoon-Left-walking-Info-20231203.csv → walking
-     *   - Watch123-Final-Josh-Left-running-Info-20231203.csv → running
-     *   - Watch123-Project1-Katz-Left-sitting-Info-20231203.csv → sitting
+     *   - xxx-xxx-xxx-xxx-walking-xxx.csv → walking
+     *   - xxx-xxx-xxx-xxx-running-xxx.csv → running
+     *   - xxx-xxx-xxx-xxx-sitting-xxx.csv → sitting
      */
     public static String extractActivityLabel(String filename) {
         String[] parts = filename.split("-");
-        if (parts.length < 5) {
-            System.err.println("Warning: Unexpected filename format (need at least 5 parts): " + filename);
-            return "unknown";
-        }
-
-        // Activity is always at index 4 (regardless of what the project field says)
-        // Format: WatchID-Project-Subject-Hand-Activity-...
-        //         [0]     [1]     [2]     [3]   [4]
-        int activityIndex = 4;
-        String activity = parts[activityIndex].trim().toLowerCase();
         
-        // Clean up the activity name: remove special characters, keep only alphanumeric and underscore
-        activity = activity.replaceAll("[^a-z0-9_]", "_");
-        
-        // Validate it's not empty after cleaning
-        if (activity.isEmpty()) {
-            System.err.println("Warning: Empty activity label in filename: " + filename);
-            return "unknown";
+        // Activity is at position 4 in dash-separated filename
+        if (parts.length > 4) {
+            String activity = parts[4].trim().toLowerCase();
+            // Clean special characters, keep alphanumeric and underscore
+            activity = activity.replaceAll("[^a-z0-9_]", "_");
+            return activity.isEmpty() ? "unknown" : activity;
         }
-
-        return activity;
+        
+        return "unknown";
     }
 }
