@@ -61,6 +61,7 @@ Desktop.ini
 # Data files (NEVER commit data files - too large)
 raw_data/
 formatted_data/
+data*/
 *.arff
 
 # Result files (generated from experiments - keep results/ directory structure only)
