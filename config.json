@@ -1,1 +1,1 @@
-{"sensors":[{"rate":"50","name":"Accelerometers","id":"1"}],"name":"Assignment1","tags":[{"name":"Subject","options":["Jinyoon","Josh","Katz"]},{"name":"Placement","options":["Left"]},{"name":"Activity","options":["hand_wash","non_hand_wash"]}]}
+{"sensors":[{"rate":"50","name":"Accelerometers","id":"1"}],"name":"FinalProject","tags":[{"name":"Subject","options":["Jinyoon","Josh","Katz"]},{"name":"Placement","options":["left"]},{"name":"Activity","options":["bicep_curl","hammer_curl","tricep_kickback"]}]}
