@@ -20,27 +20,29 @@ Using accelerometer data from left wrist to distinguish between easily confused 
 
 ```
 SPML-course-projects/
-├── raw_data/                           # All raw CSV files from smartwatch
+├── raw_data/                           # All raw CSV files from smartwatch (gitignored)
 │   └── WatchID-FinalProject-Subject-left-Activity-Info-DateTime.csv
 │       # Activity: bicep_curl, hammer_curl, tricep_kickback
 │       # Examples: Watch123-FinalProject-Jinyoon-left-bicep_curl-Info-Date.csv
-├── formatted_data/                     # Cleaned data (timestamp, ax, ay, az)
-├── results/                            # Results organized by classifier and experiment
-│   ├── baseline/                       # Baseline results (all classifiers)
-│   │   └── baseline_results.txt
+├── formatted_data/                     # Cleaned data (timestamp, ax, ay, az) (gitignored)
+├── results/                            # Experiment results (gitignored - generated locally)
+│   ├── baseline/                       # Baseline evaluation per classifier
+│   │   ├── j48/
+│   │   │   ├── Baseline_J48_evaluation.txt
+│   │   │   ├── Baseline_J48_confusion_matrix.csv
+│   │   │   └── Baseline_J48_confusion_matrix.png
+│   │   ├── random_forest/
+│   │   └── smo/
 │   ├── window_optimization/            # Window tuning per classifier
-│   │   ├── j48_window_optimization.txt
-│   │   ├── random_forest_window_optimization.txt
-│   │   └── svm_window_optimization.txt
-│   ├── master_datasets/                # Master datasets per classifier
-│   │   ├── j48_master_dataset_12features.csv
-│   │   ├── random_forest_master_dataset_12features.csv
-│   │   └── svm_master_dataset_12features.csv
-│   ├── feature_selection/              # SFS results per classifier
-│   │   ├── j48_sfs_results.txt
-│   │   ├── random_forest_sfs_results.txt
-│   │   └── svm_sfs_results.txt
-│   └── final_report/                   # Complete experiment report
+│   │   ├── j48/
+│   │   ├── random_forest/
+│   │   └── smo/
+│   └── experiment/                     # Master datasets and SFS results
+│       ├── j48/
+│       │   ├── j48_master_dataset_12features.csv
+│       │   └── sfs_j48/
+│       ├── random_forest/
+│       └── smo/
 ├── legacy/                             # Old Part1-5 files (archived)
 │   ├── Part1_DataProcessor.java
 │   ├── Part2_WindowTuning.java
@@ -50,17 +52,22 @@ SPML-course-projects/
 │   ├── WadaManager_old.java
 │   └── Assignment2_Handler.java
 ├── lib/
-│   └── weka.jar                        # Weka library 3.8.6
+│   └── weka.jar                        # Weka library 3.8.6 (gitignored - download separately)
 ├── check_jdk.sh                        # Script to verify JDK installation
 ├── compile.sh                          # Script to clean and compile all Java files
-├── ExperimentRunner.java               # Main entry point (NEW!)
-├── DataManager.java                    # Data processing engine (NEW!)
-├── FeatureEngine.java                  # Feature extraction engine (NEW!)
-├── OptimizationEngine.java             # Optimization and SFS engine (NEW!)
-├── MLEngine.java                       # ML operations engine (NEW!)
-├── MyWekaUtils.java                    # Core Weka utilities (unchanged)
+├── plot_confusion_matrix.py            # Python script to generate confusion matrix images
+├── config.json                         # Project configuration (activities, placements)
+├── ExperimentRunner.java               # Main entry point
+├── DataManager.java                    # Data processing engine
+├── FeatureEngine.java                  # Feature extraction engine
+├── OptimizationEngine.java             # Optimization and SFS engine
+├── MLEngine.java                       # ML operations engine
+├── EvaluationReporter.java             # Comprehensive evaluation reporting
+├── MyWekaUtils.java                    # Core Weka utilities
 └── README.md
 ```
+
+**Note:** Files marked as "gitignored" are generated locally or too large for version control. See `.gitignore` for complete list.
 
 ### New Modular Architecture (5 Engines)
 
@@ -211,6 +218,28 @@ results/
 
 ## Usage
 
+### Important: Version Control & Data Management
+
+**What's in Git (version controlled):**
+- ✅ All Java source files (.java)
+- ✅ Configuration files (config.json)
+- ✅ Scripts (compile.sh, check_jdk.sh, plot_confusion_matrix.py)
+- ✅ Documentation (README.md)
+- ✅ Project structure (.gitignore)
+
+**What's NOT in Git (gitignored - generated/downloaded locally):**
+- ❌ `raw_data/` - Your accelerometer CSV files (too large, dataset-specific)
+- ❌ `formatted_data/` - Generated from raw_data
+- ❌ `results/` - All experiment outputs (generated locally)
+- ❌ `lib/weka.jar` - Download separately (large file)
+- ❌ Compiled files (*.class, *.arff)
+
+**Why this matters:**
+- Data and results are NOT committed to avoid repository bloat
+- Each user maintains their own data and results locally
+- Weka library must be downloaded once per setup
+- This keeps the repository clean and focused on code
+
 ### Prerequisites
 
 1. **Install JDK** (if not already installed):
@@ -231,6 +260,16 @@ unzip weka-3-8-6.zip
 mv weka-3-8-6/weka.jar .
 rm -rf weka-3-8-6 weka-3-8-6.zip
 cd ..
+```
+
+3. **Prepare Data Directory**:
+```bash
+# Create raw_data directory for your CSV files
+mkdir -p raw_data
+
+# Place your smartwatch data files here
+# Format: WatchID-FinalProject-Subject-left-ActivityName-Info-DateTime.csv
+```
 ```
 
 ### Compile

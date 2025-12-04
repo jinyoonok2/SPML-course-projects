@@ -59,18 +59,18 @@ Desktop.ini
 *~
 
 # Data files (NEVER commit data files - too large)
-raw_data/*.csv
-formatted_data/*.csv
+raw_data/
+formatted_data/
 *.arff
 
-# Result files (generated from experiments)
-results/**/*.txt
-results/**/*.csv
-results/**/*.arff
-results/**/optimal_window_config.txt
+# Result files (generated from experiments - keep results/ directory structure only)
+results/
+!results/.gitkeep
 
-# Master datasets (generated, per-classifier)
-results/master_datasets/*.csv
+# Temporary and verification files
+PIPELINE_VERIFICATION.txt
+*.tmp
+*.temp
 
 # Libraries (large files, users should download separately)
 lib/*.jar
