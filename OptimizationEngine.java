@@ -46,7 +46,7 @@ public class OptimizationEngine {
         
         // Test each classifier with all window sizes
         for (MLEngine.ClassifierType classifier : MLEngine.ClassifierType.values()) {
-            System.out.println("--- Testing " + classifier.displayName + " ---");
+            System.out.printf("%n=== Testing %s ===%n", classifier.displayName);
             
             int bestWindowMs = WINDOW_SIZES_MS[0];
             double bestAccuracy = 0.0;
@@ -68,7 +68,15 @@ public class OptimizationEngine {
             optimalWindows.put(classifier, bestWindowMs);
             optimalAccuracies.put(classifier, bestAccuracy);
             
-            System.out.printf("  ✓ Best for %s: %.0fs (accuracy: %.4f)%n%n", 
+            // Generate detailed report for best window configuration
+            System.out.printf("%n  Generating detailed report for optimal window (%.0fs)...%n", bestWindowMs/1000.0);
+            Path bestFeatureCsv = windowFeatures.get(bestWindowMs);
+            Path classifierReportDir = resultsDir.resolve(classifier.name().toLowerCase());
+            Files.createDirectories(classifierReportDir);
+            String experimentName = String.format("WindowOpt_%s_%.0fs", classifier.name(), bestWindowMs/1000.0);
+            MLEngine.evaluateClassifier(bestFeatureCsv, classifier, classifierReportDir, experimentName);
+            
+            System.out.printf("  ✓ Best for %s: %.0fs (accuracy: %.4f)%n", 
                              classifier.displayName, bestWindowMs/1000.0, bestAccuracy);
         }
         
@@ -157,7 +165,7 @@ public class OptimizationEngine {
      */
     public static SFSResult performSequentialFeatureSelection(Path csvFile, MLEngine.ClassifierType classifier) 
             throws Exception {
-        System.out.printf("Running SFS for %s...%n", classifier.displayName);
+        System.out.printf("%n=== Running SFS for %s ===%n", classifier.displayName);
         
         // Read CSV data
         String[][] csvData = MyWekaUtils.readCSV(csvFile.toString());
@@ -216,8 +224,38 @@ public class OptimizationEngine {
                              bestFeatureToAdd, selectedFeatures.size(), lastBestAccuracy);
         }
         
-        System.out.printf("✓ SFS completed: %d features selected, final accuracy: %.4f%n", 
+        System.out.printf("%n✓ SFS completed: %d features selected, final accuracy: %.4f%n", 
                          selectedFeatures.size(), lastBestAccuracy);
+        
+        // Generate detailed evaluation report for final SFS result
+        System.out.println("Generating detailed evaluation report for selected features...");
+        Path parentDir = csvFile.getParent();
+        Path sfsReportDir = parentDir.resolve(String.format("sfs_%s", classifier.name().toLowerCase()));
+        Files.createDirectories(sfsReportDir);
+        
+        // Save selected feature CSV
+        Path sfsFeaturesCsv = sfsReportDir.resolve(String.format("sfs_%s_features.csv", classifier.name().toLowerCase()));
+        try (PrintWriter writer = new PrintWriter(Files.newBufferedWriter(sfsFeaturesCsv))) {
+            // Write header
+            writer.print(csvData[0][csvData[0].length - 1]); // class column
+            for (int featureIdx : selectedFeatures) {
+                writer.print("," + csvData[0][featureIdx]);
+            }
+            writer.println();
+            
+            // Write data rows
+            for (int row = 1; row < csvData.length; row++) {
+                writer.print(csvData[row][csvData[row].length - 1]); // class value
+                for (int featureIdx : selectedFeatures) {
+                    writer.print("," + csvData[row][featureIdx]);
+                }
+                writer.println();
+            }
+        }
+        
+        // Generate detailed report
+        String experimentName = String.format("SFS_%s_%dfeatures", classifier.name(), selectedFeatures.size());
+        MLEngine.evaluateClassifier(sfsFeaturesCsv, classifier, sfsReportDir, experimentName);
         
         return new SFSResult(selectedFeatures, lastBestAccuracy);
     }

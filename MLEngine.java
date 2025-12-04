@@ -1,6 +1,8 @@
 import java.io.*;
 import java.nio.file.*;
 import java.util.*;
+import weka.classifiers.Evaluation;
+import weka.core.Instances;
 
 /**
  * MLEngine - Machine Learning operations and classifier management
@@ -105,6 +107,14 @@ public class MLEngine {
      * Converts to ARFF and evaluates using MyWekaUtils
      */
     public static double evaluateClassifier(Path csvFile, ClassifierType classifierType) throws Exception {
+        return evaluateClassifier(csvFile, classifierType, null, null);
+    }
+    
+    /**
+     * Evaluate classifier with optional detailed reporting
+     */
+    public static double evaluateClassifier(Path csvFile, ClassifierType classifierType, 
+                                           Path reportDir, String experimentName) throws Exception {
         if (!Files.exists(csvFile)) {
             throw new FileNotFoundException("CSV file not found: " + csvFile);
         }
@@ -121,11 +131,28 @@ public class MLEngine {
         }
         String arffData = MyWekaUtils.csvToArff(csvData, allFeatures);
         
-        // Evaluate
-        double accuracy = MyWekaUtils.classify(arffData, classifierType.wekaId) / 100.0; // Convert percentage to decimal
-        
-        System.out.printf("✓ %s accuracy: %.4f%n", classifierType.displayName, accuracy);
-        return accuracy;
+        // Get detailed evaluation if reporting is requested
+        if (reportDir != null && experimentName != null) {
+            Evaluation eval = MyWekaUtils.classifyWithDetails(arffData, classifierType.wekaId);
+            Instances instances = MyWekaUtils.getInstancesFromArff(arffData);
+            
+            // Create detailed result
+            EvaluationReporter.DetailedEvaluationResult result = 
+                new EvaluationReporter.DetailedEvaluationResult(eval, null, classifierType.displayName, instances);
+            
+            // Print to console
+            EvaluationReporter.printEvaluation(result);
+            
+            // Save report
+            EvaluationReporter.saveEvaluationReport(result, reportDir, experimentName);
+            
+            return result.accuracy;
+        } else {
+            // Simple evaluation (original behavior)
+            double accuracy = MyWekaUtils.classify(arffData, classifierType.wekaId) / 100.0;
+            System.out.printf("✓ %s accuracy: %.4f%n", classifierType.displayName, accuracy);
+            return accuracy;
+        }
     }
     
     /**
@@ -282,18 +309,25 @@ public class MLEngine {
         Path featuresCsv = resultsDir.resolve("baseline_features.csv");
         FeatureEngine.extractBasicFeatures(baseDir, featuresCsv, 1000, 1000);
         
-        // Evaluate each classifier
+        // Evaluate each classifier with detailed reporting
         Map<ClassifierType, Double> baselineResults = new LinkedHashMap<>();
         
         for (ClassifierType classifier : ClassifierType.values()) {
-            System.out.printf("Evaluating %s...%n", classifier.displayName);
-            double accuracy = evaluateClassifier(featuresCsv, classifier);
+            System.out.printf("%n=== Evaluating %s ===%n", classifier.displayName);
+            
+            // Create classifier-specific report directory
+            Path classifierReportDir = resultsDir.resolve(classifier.name().toLowerCase());
+            Files.createDirectories(classifierReportDir);
+            
+            // Run evaluation with detailed reporting
+            String experimentName = String.format("Baseline_%s", classifier.name());
+            double accuracy = evaluateClassifier(featuresCsv, classifier, classifierReportDir, experimentName);
             baselineResults.put(classifier, accuracy);
         }
         
         // Print summary
         System.out.println();
-        System.out.println("=== Baseline Results ===");
+        System.out.println("=== Baseline Results Summary ===");
         for (Map.Entry<ClassifierType, Double> entry : baselineResults.entrySet()) {
             System.out.printf("  %-20s: %.4f%n", entry.getKey().displayName, entry.getValue());
         }

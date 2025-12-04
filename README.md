@@ -134,6 +134,81 @@ The new `ExperimentConfig` system allows mixing and matching any combination:
 
 This enables flexible experimentation and custom workflows.
 
+## Evaluation Reporting
+
+The system generates comprehensive evaluation reports with detailed metrics for each classifier:
+
+### Console Output
+When running experiments, all evaluation metrics are printed to console:
+- **Accuracy** - Overall classification accuracy
+- **Kappa Statistic** - Agreement beyond chance
+- **Confusion Matrix** - Complete matrix with row/column labels
+- **Per-Class Metrics**:
+  - Precision (positive predictive value)
+  - Recall (sensitivity)
+  - F1-Score (harmonic mean of precision and recall)
+
+### Saved Reports
+
+For each classifier evaluation, the following files are automatically generated:
+
+1. **Detailed Text Report** (`<experiment_name>_evaluation_report.txt`)
+   - Timestamp and experiment information
+   - All metrics in formatted text
+   - Complete confusion matrix with labels
+   - Full Weka evaluation summary
+
+2. **Confusion Matrix CSV** (`<experiment_name>_confusion_matrix.csv`)
+   - Machine-readable format with class labels
+   - Ready for visualization and analysis
+   - Can be converted to images using provided Python script
+
+### Visualizing Confusion Matrices
+
+A Python script is provided to generate heatmap images from CSV files:
+
+```bash
+# Install required Python packages
+pip install numpy matplotlib seaborn
+
+# Generate image for single confusion matrix
+python plot_confusion_matrix.py results/baseline/j48/Baseline_J48_confusion_matrix.csv
+
+# Generate images for all confusion matrices in results directory
+python plot_confusion_matrix.py results/
+```
+
+Output: High-quality PNG images with:
+- Color-coded heatmap (blue gradient)
+- Annotated cell values
+- Labeled axes with class names
+- 300 DPI resolution for publication
+
+### Report Organization
+
+Reports are organized by experiment type and classifier:
+```
+results/
+├── baseline/
+│   ├── j48/
+│   │   ├── Baseline_J48_evaluation_report.txt
+│   │   ├── Baseline_J48_confusion_matrix.csv
+│   │   └── Baseline_J48_confusion_matrix.png
+│   ├── random_forest/
+│   └── smo/
+├── window_optimization/
+│   ├── j48/
+│   │   ├── WindowOpt_J48_2.0s_evaluation_report.txt
+│   │   └── WindowOpt_J48_2.0s_confusion_matrix.csv
+│   └── ...
+└── experiment/
+    ├── j48/
+    │   └── sfs_j48/
+    │       ├── SFS_J48_7features_evaluation_report.txt
+    │       └── SFS_J48_7features_confusion_matrix.csv
+    └── ...
+```
+
 ## Usage
 
 ### Prerequisites

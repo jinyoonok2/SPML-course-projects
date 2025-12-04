@@ -44,6 +44,62 @@ public class MyWekaUtils {
 		return eval.pctCorrect();
 	}
     
+    /**
+     * Enhanced classification with full evaluation details
+     * Returns Evaluation object containing all metrics (confusion matrix, precision, recall, etc.)
+     */
+    public static Evaluation classifyWithDetails(String arffData, int option) throws Exception {
+		StringReader strReader = new StringReader(arffData);
+		Instances instances = new Instances(strReader);
+		strReader.close();
+		instances.setClassIndex(instances.numAttributes() - 1);
+		
+		Classifier classifier;
+		String classifierName;
+		if(option==1) {
+			classifier = new J48();
+			classifierName = "J48";
+		} else if(option==2) {
+			classifier = new RandomForest();
+			classifierName = "RandomForest";
+		} else if(option == 3) {
+			classifier = new SMO();
+			classifierName = "SVM";
+		} else {
+			return null;
+		}
+		
+		classifier.buildClassifier(instances);
+		
+		Evaluation eval = new Evaluation(instances);
+		eval.crossValidateModel(classifier, instances, 10, new Random(1), new Object[] { });
+		
+		return eval;
+	}
+    
+    /**
+     * Get classifier name from option
+     */
+    public static String getClassifierName(int option) {
+        switch(option) {
+            case 1: return "J48 Decision Tree";
+            case 2: return "Random Forest";
+            case 3: return "SVM (SMO)";
+            default: return "Unknown";
+        }
+    }
+    
+    /**
+     * Get Instances from ARFF data
+     */
+    public static Instances getInstancesFromArff(String arffData) throws Exception {
+        StringReader strReader = new StringReader(arffData);
+		Instances instances = new Instances(strReader);
+		strReader.close();
+		instances.setClassIndex(instances.numAttributes() - 1);
+		return instances;
+    }
+    
     
     public static String[][] readCSV(String filePath) throws Exception {
         StringBuilder sb = new StringBuilder();
