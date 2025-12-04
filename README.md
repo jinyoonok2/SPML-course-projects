@@ -124,7 +124,8 @@ SPML-course-projects/
 - Scripts (`.sh`, `.py`)
 - Documentation
 
-**Data Sharing**: Raw data available via Google Drive link (see below). Download, unzip to `raw_data/`, and run experiments to reproduce results.
+**Data Sharing**: Raw data available via Google Drive: https://drive.google.com/drive/folders/1fYxyIDdB7hrAm8TPOfvHkfVRXYcA30bc?dmr=1&ec=wgc-drive-globalnav-goto  
+Download `raw_data.zip`, extract to `raw_data/`, and run experiments to reproduce results.
 
 
 ## Code Architecture
@@ -988,11 +989,12 @@ Or download manually from: https://sourceforge.net/projects/weka/files/weka-3-8/
 
 #### 3. Get Raw Data
 
-**Download from Google Drive**: [Link will be provided - raw accelerometer CSV files]
+**Download from Google Drive**: https://drive.google.com/drive/folders/1fYxyIDdB7hrAm8TPOfvHkfVRXYcA30bc?dmr=1&ec=wgc-drive-globalnav-goto
 
 **Setup**:
 ```bash
-# Download and extract to raw_data/
+# Download raw_data.zip from Google Drive link above
+# Extract to raw_data/
 unzip raw_data.zip -d raw_data/
 
 # Verify files
