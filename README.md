@@ -26,23 +26,27 @@ SPML-course-projects/
 │       # Examples: Watch123-FinalProject-Jinyoon-left-bicep_curl-Info-Date.csv
 ├── formatted_data/                     # Cleaned data (timestamp, ax, ay, az) (gitignored)
 ├── results/                            # Experiment results (gitignored - generated locally)
-│   ├── baseline/                       # Baseline evaluation per classifier
+│   ├── 1_baseline/                     # Step 1: Baseline evaluation (6 features, 1s window)
 │   │   ├── j48/
 │   │   │   ├── Baseline_J48_evaluation.txt
 │   │   │   ├── Baseline_J48_confusion_matrix.csv
 │   │   │   └── Baseline_J48_confusion_matrix.png
 │   │   ├── random_forest/
 │   │   └── smo/
-│   ├── window_optimization/            # Window tuning per classifier
+│   ├── 2_window_optimization/          # Step 2: Window size tuning (test 1s-4s)
 │   │   ├── j48/
 │   │   ├── random_forest/
 │   │   └── smo/
-│   └── experiment/                     # Master datasets and SFS results
-│       ├── j48/
-│       │   ├── j48_master_dataset_12features.csv
-│       │   └── sfs_j48/
-│       ├── random_forest/
-│       └── smo/
+│   ├── 3_feature_expansion/            # Step 3: Expand to 12 features (master datasets)
+│   │   ├── j48_master_dataset_12features.csv
+│   │   ├── random_forest_master_dataset_12features.csv
+│   │   └── smo_master_dataset_12features.csv
+│   └── 4_feature_selection/            # Step 4: SFS - Select best features
+│       ├── sfs_j48/
+│       │   ├── SFS_J48_7features_evaluation.txt
+│       │   └── SFS_J48_7features_confusion_matrix.csv
+│       ├── sfs_random_forest/
+│       └── sfs_smo/
 ├── legacy/                             # Old Part1-5 files (archived)
 │   ├── Part1_DataProcessor.java
 │   ├── Part2_WindowTuning.java

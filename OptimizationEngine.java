@@ -25,14 +25,19 @@ public class OptimizationEngine {
      * Returns optimal window for each classifier
      */
     public static WindowOptimizationResult findOptimalWindowSize(Path baseDir) throws Exception {
-        System.out.println("Testing window sizes for each classifier with 6 basic features: 1s, 2s, 3s, 4s");
-        System.out.println("Finding optimal window for each classifier independently");
-        System.out.println();
-        
-        Path resultsDir = baseDir.resolve("results/window_optimization");
+        Path resultsDir = baseDir.resolve("results/2_window_optimization");
         Files.createDirectories(resultsDir);
         
-        // Extract features for each window size once (reused by all classifiers)
+        // Start logging
+        ExperimentLogger logger = new ExperimentLogger();
+        logger.startLogging(resultsDir.resolve("window_optimization_log.txt"));
+        
+        try {
+            System.out.println("Testing window sizes for each classifier with 6 basic features: 1s, 2s, 3s, 4s");
+            System.out.println("Finding optimal window for each classifier independently");
+            System.out.println();
+            
+            // Extract features for each window size once (reused by all classifiers)
         Map<Integer, Path> windowFeatures = new LinkedHashMap<>();
         for (int windowMs : WINDOW_SIZES_MS) {
             Path featuresCsv = resultsDir.resolve(String.format("window_%dms_features.csv", windowMs));
@@ -93,13 +98,16 @@ public class OptimizationEngine {
         saveOptimalWindowSizes(resultsDir, optimalWindows, optimalAccuracies);
         
         return new WindowOptimizationResult(optimalWindows, optimalAccuracies);
+        } finally {
+            logger.stopLogging();
+        }
     }
     
     /**
      * Load optimal window size for specific classifier
      */
     public static int loadOptimalWindowSize(Path baseDir, MLEngine.ClassifierType classifier) {
-        Path configFile = baseDir.resolve("results/window_optimization/optimal_windows.txt");
+        Path configFile = baseDir.resolve("results/2_window_optimization/optimal_windows.txt");
         
         if (!Files.exists(configFile)) {
             return 1000; // Default to 1s if not found
@@ -163,8 +171,11 @@ public class OptimizationEngine {
      * Perform Sequential Feature Selection for a single classifier
      * Based on Part4_FeatureSelection logic
      */
-    public static SFSResult performSequentialFeatureSelection(Path csvFile, MLEngine.ClassifierType classifier) 
-            throws Exception {
+    /**
+     * Perform Sequential Feature Selection with custom output directory
+     */
+    public static SFSResult performSequentialFeatureSelection(Path csvFile, MLEngine.ClassifierType classifier, 
+                                                              Path outputDir) throws Exception {
         System.out.printf("%n=== Running SFS for %s ===%n", classifier.displayName);
         
         // Read CSV data
@@ -172,6 +183,33 @@ public class OptimizationEngine {
         if (csvData == null || csvData.length == 0) {
             throw new IOException("CSV file is empty or unreadable");
         }
+        
+        // Perform SFS
+        SFSResult result = performSFSCore(csvData, classifier);
+        
+        // Generate detailed evaluation report for final SFS result
+        System.out.println("Generating detailed evaluation report for selected features...");
+        Path sfsReportDir = outputDir.resolve(String.format("sfs_%s", classifier.name().toLowerCase()));
+        Files.createDirectories(sfsReportDir);
+        
+        saveSFSResults(csvData, result.selectedFeatures, sfsReportDir, classifier);
+        
+        return result;
+    }
+    
+    /**
+     * Perform Sequential Feature Selection (uses csvFile parent directory for output)
+     */
+    public static SFSResult performSequentialFeatureSelection(Path csvFile, MLEngine.ClassifierType classifier) 
+            throws Exception {
+        return performSequentialFeatureSelection(csvFile, classifier, csvFile.getParent());
+    }
+    
+    /**
+     * Core SFS logic - select features iteratively
+     */
+    private static SFSResult performSFSCore(String[][] csvData, MLEngine.ClassifierType classifier) 
+            throws Exception {
         
         // Get number of features (exclude class column)
         int numFeatures = csvData[0].length - 1;
@@ -227,28 +265,38 @@ public class OptimizationEngine {
         System.out.printf("%n✓ SFS completed: %d features selected, final accuracy: %.4f%n", 
                          selectedFeatures.size(), lastBestAccuracy);
         
-        // Generate detailed evaluation report for final SFS result
-        System.out.println("Generating detailed evaluation report for selected features...");
-        Path parentDir = csvFile.getParent();
-        Path sfsReportDir = parentDir.resolve(String.format("sfs_%s", classifier.name().toLowerCase()));
-        Files.createDirectories(sfsReportDir);
+        return new SFSResult(selectedFeatures, lastBestAccuracy);
+    }
+    
+    /**
+     * Save SFS results to files
+     */
+    private static void saveSFSResults(String[][] csvData, List<Integer> selectedFeatures,
+                                      Path sfsReportDir, MLEngine.ClassifierType classifier) 
+            throws Exception {
         
-        // Save selected feature CSV
+        // Save selected feature CSV (features first, class last - proper CSV format)
         Path sfsFeaturesCsv = sfsReportDir.resolve(String.format("sfs_%s_features.csv", classifier.name().toLowerCase()));
         try (PrintWriter writer = new PrintWriter(Files.newBufferedWriter(sfsFeaturesCsv))) {
-            // Write header
-            writer.print(csvData[0][csvData[0].length - 1]); // class column
+            // Write header - features first, then class column
+            boolean first = true;
             for (int featureIdx : selectedFeatures) {
-                writer.print("," + csvData[0][featureIdx]);
+                if (!first) writer.print(",");
+                writer.print(csvData[0][featureIdx]);
+                first = false;
             }
+            writer.print("," + csvData[0][csvData[0].length - 1]); // class column last
             writer.println();
             
-            // Write data rows
+            // Write data rows - features first, then class value
             for (int row = 1; row < csvData.length; row++) {
-                writer.print(csvData[row][csvData[row].length - 1]); // class value
+                first = true;
                 for (int featureIdx : selectedFeatures) {
-                    writer.print("," + csvData[row][featureIdx]);
+                    if (!first) writer.print(",");
+                    writer.print(csvData[row][featureIdx]);
+                    first = false;
                 }
+                writer.print("," + csvData[row][csvData[row].length - 1]); // class value last
                 writer.println();
             }
         }
@@ -256,8 +304,6 @@ public class OptimizationEngine {
         // Generate detailed report
         String experimentName = String.format("SFS_%s_%dfeatures", classifier.name(), selectedFeatures.size());
         MLEngine.evaluateClassifier(sfsFeaturesCsv, classifier, sfsReportDir, experimentName);
-        
-        return new SFSResult(selectedFeatures, lastBestAccuracy);
     }
     
     /**

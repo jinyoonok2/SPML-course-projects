@@ -64,9 +64,8 @@ formatted_data/
 data*/
 *.arff
 
-# Result files (generated from experiments - keep results/ directory structure only)
+# Result files (generated from experiments - gitignored)
 results/
-!results/.gitkeep
 
 # Temporary and verification files
 PIPELINE_VERIFICATION.txt

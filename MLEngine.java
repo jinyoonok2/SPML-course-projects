@@ -296,49 +296,58 @@ public class MLEngine {
      * Each classifier gets its own baseline: 6 features, 1s window, no SFS
      */
     public static Map<ClassifierType, Double> runBaselineEvaluation(Path baseDir) throws Exception {
-        System.out.println("=== Baseline Evaluation (All Classifiers) ===");
-        System.out.println("Configuration: 6 basic features, 1s window, no feature selection");
-        System.out.println();
-        
         // Create results directory
-        Path resultsDir = baseDir.resolve("results/baseline");
+        Path resultsDir = baseDir.resolve("results/1_baseline");
         Files.createDirectories(resultsDir);
         
-        // Format data and extract basic features once
-        DataManager.formatRawData(baseDir);
-        Path featuresCsv = resultsDir.resolve("baseline_features.csv");
-        FeatureEngine.extractBasicFeatures(baseDir, featuresCsv, 1000, 1000);
+        // Start logging
+        ExperimentLogger logger = new ExperimentLogger();
+        logger.startLogging(resultsDir.resolve("baseline_log.txt"));
         
-        // Evaluate each classifier with detailed reporting
-        Map<ClassifierType, Double> baselineResults = new LinkedHashMap<>();
-        
-        for (ClassifierType classifier : ClassifierType.values()) {
-            System.out.printf("%n=== Evaluating %s ===%n", classifier.displayName);
+        try {
+            System.out.println("=== Baseline Evaluation (All Classifiers) ===");
+            System.out.println("Configuration: 6 basic features, 1s window, no feature selection");
+            System.out.println();
             
-            // Create classifier-specific report directory
-            Path classifierReportDir = resultsDir.resolve(classifier.name().toLowerCase());
-            Files.createDirectories(classifierReportDir);
+            // Format data and extract basic features once
+            DataManager.formatRawData(baseDir);
+            Path featuresCsv = resultsDir.resolve("baseline_features.csv");
+            FeatureEngine.extractBasicFeatures(baseDir, featuresCsv, 1000, 1000);
             
-            // Run evaluation with detailed reporting
-            String experimentName = String.format("Baseline_%s", classifier.name());
-            double accuracy = evaluateClassifier(featuresCsv, classifier, classifierReportDir, experimentName);
-            baselineResults.put(classifier, accuracy);
+            // Evaluate each classifier with detailed reporting
+            Map<ClassifierType, Double> baselineResults = new LinkedHashMap<>();
+            
+            for (ClassifierType classifier : ClassifierType.values()) {
+                System.out.printf("%n=== Evaluating %s ===%n", classifier.displayName);
+                
+                // Create classifier-specific report directory
+                Path classifierReportDir = resultsDir.resolve(classifier.name().toLowerCase());
+                Files.createDirectories(classifierReportDir);
+                
+                // Run evaluation with detailed reporting
+                String experimentName = String.format("Baseline_%s", classifier.name());
+                double accuracy = evaluateClassifier(featuresCsv, classifier, classifierReportDir, experimentName);
+                baselineResults.put(classifier, accuracy);
+            }
+            
+            // Print summary
+            System.out.println();
+            System.out.println("=== Baseline Results Summary ===");
+            for (Map.Entry<ClassifierType, Double> entry : baselineResults.entrySet()) {
+                System.out.printf("  %-20s: %.4f%n", entry.getKey().displayName, entry.getValue());
+            }
+            
+            // Save results
+            saveEvaluationResults(resultsDir, "baseline_results.txt", 
+                                 "Baseline Evaluation Results (All Classifiers)", 
+                                 baselineResults);
+            
+            System.out.println("✓ Baseline evaluation complete for all classifiers");
+            
+            return baselineResults;
+        } finally {
+            logger.stopLogging();
         }
-        
-        // Print summary
-        System.out.println();
-        System.out.println("=== Baseline Results Summary ===");
-        for (Map.Entry<ClassifierType, Double> entry : baselineResults.entrySet()) {
-            System.out.printf("  %-20s: %.4f%n", entry.getKey().displayName, entry.getValue());
-        }
-        
-        // Save results
-        saveEvaluationResults(resultsDir, "baseline_results.txt", 
-                             "Baseline Evaluation Results (All Classifiers)", 
-                             baselineResults);
-        
-        System.out.println("✓ Baseline evaluation complete for all classifiers");
-        return baselineResults;
     }
     
     /**
@@ -366,8 +375,8 @@ public class MLEngine {
         System.out.println();
         
         // Step 3: Create Master Datasets (per-classifier with 12 features and optimal windows)
-        System.out.println("=== STEP 3: Master Dataset Creation (Per-Classifier) ===");
-        Path resultsDir = baseDir.resolve("results/experiment");
+        System.out.println("=== STEP 3: Feature Expansion (12 Features) ===");
+        Path resultsDir = baseDir.resolve("results/3_feature_expansion");
         Files.createDirectories(resultsDir);
         
         results.masterDatasets = new LinkedHashMap<>();
@@ -394,12 +403,16 @@ public class MLEngine {
         
         results.sfsResults = new LinkedHashMap<>();
         
+        // Create feature selection directory
+        Path featureSelectionDir = baseDir.resolve("results/4_feature_selection");
+        Files.createDirectories(featureSelectionDir);
+        
         for (ClassifierType classifier : ClassifierType.values()) {
             Path masterDataset = results.masterDatasets.get(classifier);
             System.out.printf("Running SFS for %s...%n", classifier.displayName);
             
             OptimizationEngine.SFSResult sfsResult = 
-                OptimizationEngine.performSequentialFeatureSelection(masterDataset, classifier);
+                OptimizationEngine.performSequentialFeatureSelection(masterDataset, classifier, featureSelectionDir);
             results.sfsResults.put(classifier, sfsResult);
         }
         

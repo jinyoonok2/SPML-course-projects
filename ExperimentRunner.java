@@ -115,24 +115,29 @@ public class ExperimentRunner {
      * Creates master dataset per classifier with its optimal window
      */
     private static void runFeatureExpansion(Path baseDir) throws Exception {
-        System.out.println("=== MASTER DATASET CREATION (PER-CLASSIFIER) ===");
-        
-        DataManager.formatRawData(baseDir);
-        
-        // Load optimal windows
-        Map<MLEngine.ClassifierType, Integer> optimalWindows = OptimizationEngine.loadAllOptimalWindows(baseDir);
-        boolean needsOptimization = optimalWindows.values().stream().allMatch(w -> w == 1000);
-        
-        if (needsOptimization) {
-            System.out.println("No window optimization found, running optimization first...");
-            OptimizationEngine.WindowOptimizationResult result = OptimizationEngine.findOptimalWindowSize(baseDir);
-            optimalWindows = result.optimalWindows;
-        }
-        
-        Path resultsDir = baseDir.resolve("results/feature_expansion");
+        Path resultsDir = baseDir.resolve("results/3_feature_expansion");
         Files.createDirectories(resultsDir);
         
-        for (MLEngine.ClassifierType classifier : MLEngine.ClassifierType.values()) {
+        // Start logging
+        ExperimentLogger logger = new ExperimentLogger();
+        logger.startLogging(resultsDir.resolve("feature_expansion_log.txt"));
+        
+        try {
+            System.out.println("=== MASTER DATASET CREATION (PER-CLASSIFIER) ===");
+            
+            DataManager.formatRawData(baseDir);
+            
+            // Load optimal windows
+            Map<MLEngine.ClassifierType, Integer> optimalWindows = OptimizationEngine.loadAllOptimalWindows(baseDir);
+            boolean needsOptimization = optimalWindows.values().stream().allMatch(w -> w == 1000);
+            
+            if (needsOptimization) {
+                System.out.println("No window optimization found, running optimization first...");
+                OptimizationEngine.WindowOptimizationResult result = OptimizationEngine.findOptimalWindowSize(baseDir);
+                optimalWindows = result.optimalWindows;
+            }
+            
+            for (MLEngine.ClassifierType classifier : MLEngine.ClassifierType.values()) {
             int optimalWindow = optimalWindows.get(classifier);
             Path masterDataset = resultsDir.resolve(
                 String.format("%s_master_dataset_12features.csv", classifier.name().toLowerCase()));
@@ -146,6 +151,9 @@ public class ExperimentRunner {
         
         System.out.printf("%n✓ Master datasets created successfully%n");
         System.out.println("Each classifier has its own 12-feature dataset with its optimal window");
+        } finally {
+            logger.stopLogging();
+        }
     }
     
     /**
@@ -153,22 +161,30 @@ public class ExperimentRunner {
      * Runs SFS on each classifier's optimized master dataset
      */
     private static void runFeatureSelection(Path baseDir) throws Exception {
-        System.out.println("=== FEATURE SELECTION & CLASSIFIER COMPARISON ===");
+        // Check if master datasets exist (from feature expansion step)
+        Path featureExpansionDir = baseDir.resolve("results/3_feature_expansion");
+        Path resultsDir = baseDir.resolve("results/4_feature_selection");
+        Files.createDirectories(resultsDir);
         
-        // Check if master datasets exist
-        Path resultsDir = baseDir.resolve("results/feature_expansion");
-        boolean hasMasterDatasets = true;
+        // Start logging
+        ExperimentLogger logger = new ExperimentLogger();
+        logger.startLogging(resultsDir.resolve("feature_selection_log.txt"));
         
-        for (MLEngine.ClassifierType classifier : MLEngine.ClassifierType.values()) {
-            Path masterDataset = resultsDir.resolve(
-                String.format("%s_master_dataset_12features.csv", classifier.name().toLowerCase()));
-            if (!Files.exists(masterDataset)) {
-                hasMasterDatasets = false;
-                break;
+        try {
+            System.out.println("=== FEATURE SELECTION & CLASSIFIER COMPARISON ===");
+            
+            boolean hasMasterDatasets = true;
+            
+            for (MLEngine.ClassifierType classifier : MLEngine.ClassifierType.values()) {
+                Path masterDataset = featureExpansionDir.resolve(
+                    String.format("%s_master_dataset_12features.csv", classifier.name().toLowerCase()));
+                if (!Files.exists(masterDataset)) {
+                    hasMasterDatasets = false;
+                    break;
+                }
             }
-        }
-        
-        if (!hasMasterDatasets) {
+            
+            if (!hasMasterDatasets) {
             System.out.println("Master datasets not found, creating them first...");
             runFeatureExpansion(baseDir);
         }
@@ -180,12 +196,12 @@ public class ExperimentRunner {
         Map<MLEngine.ClassifierType, OptimizationEngine.SFSResult> results = new LinkedHashMap<>();
         
         for (MLEngine.ClassifierType classifier : MLEngine.ClassifierType.values()) {
-            Path masterDataset = resultsDir.resolve(
+            Path masterDataset = featureExpansionDir.resolve(
                 String.format("%s_master_dataset_12features.csv", classifier.name().toLowerCase()));
             
             System.out.printf("Running SFS for %s...%n", classifier.displayName);
             OptimizationEngine.SFSResult result = 
-                OptimizationEngine.performSequentialFeatureSelection(masterDataset, classifier);
+                OptimizationEngine.performSequentialFeatureSelection(masterDataset, classifier, resultsDir);
             results.put(classifier, result);
         }
         
@@ -210,6 +226,9 @@ public class ExperimentRunner {
         if (bestClassifier != null) {
             System.out.printf("%n>>> Best classifier: %s (accuracy: %.4f)%n", 
                              bestClassifier.displayName, bestAccuracy);
+        }
+        } finally {
+            logger.stopLogging();
         }
     }
     
