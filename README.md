@@ -3,6 +3,13 @@
 ## Overview
 A modular machine learning system for activity recognition using smartwatch accelerometer data. The project supports multi-class classification for any activities with automatic class detection, per-classifier optimization, and comprehensive feature engineering.
 
+**Current Application**: Dumbbell Exercise Classification
+- **Class 1**: Bicep Curl (Supinated grip)
+- **Class 2**: Hammer Curl (Neutral grip)  
+- **Class 3**: Tricep Kickback (Linear arm extension)
+
+Using accelerometer data from left wrist to distinguish between easily confused dumbbell exercises.
+
 **Key Features**: 
 - **Multi-class support** - Automatically detects and classifies any number of activities
 - **Per-classifier optimization** - Each classifier gets its own optimal window size and feature set
@@ -14,9 +21,9 @@ A modular machine learning system for activity recognition using smartwatch acce
 ```
 SPML-course-projects/
 ├── raw_data/                           # All raw CSV files from smartwatch
-│   └── WatchID-Project-Subject-Hand-Activity-Info-DateTime.csv
-│       # Examples: Assignment2, Final, Project1, etc. (any project name works)
-│       # Activity determines the class: walking, running, sitting, etc.
+│   └── WatchID-FinalProject-Subject-left-Activity-Info-DateTime.csv
+│       # Activity: bicep_curl, hammer_curl, tricep_kickback
+│       # Examples: Watch123-FinalProject-Jinyoon-left-bicep_curl-Info-Date.csv
 ├── formatted_data/                     # Cleaned data (timestamp, ax, ay, az)
 ├── results/                            # Results organized by classifier and experiment
 │   ├── baseline/                       # Baseline results (all classifiers)
@@ -263,13 +270,14 @@ timestamp_ms, sensor_type, accuracy, ax, ay, az
 ### Features CSV
 ```
 mean_x,std_x,mean_y,std_y,mean_z,std_z,Activity
--4.523,0.421,1.234,0.567,8.901,0.345,walking
--2.134,0.823,0.456,0.234,9.234,0.567,running
+-4.523,0.421,1.234,0.567,8.901,0.345,bicep_curl
+-2.134,0.823,0.456,0.234,9.234,0.567,hammer_curl
+-1.234,0.456,0.789,0.123,8.567,0.234,tricep_kickback
 ```
 
 ### ARFF Format (Weka)
 ```
-@RELATION activities
+@RELATION dumbbell_exercises
 
 @ATTRIBUTE mean_x NUMERIC
 @ATTRIBUTE std_x NUMERIC
@@ -277,10 +285,11 @@ mean_x,std_x,mean_y,std_y,mean_z,std_z,Activity
 @ATTRIBUTE std_y NUMERIC
 @ATTRIBUTE mean_z NUMERIC
 @ATTRIBUTE std_z NUMERIC
-@ATTRIBUTE Activity {walking,running,sitting,standing,...}
+@ATTRIBUTE Activity {bicep_curl,hammer_curl,tricep_kickback}
 
-@DATA@DATA
--4.523,0.421,1.234,0.567,8.901,0.345,hand_wash
+@DATA
+-4.523,0.421,1.234,0.567,8.901,0.345,bicep_curl
+-2.134,0.823,0.456,0.234,9.234,0.567,hammer_curl
 ```
 
 ## Platform Compatibility
@@ -356,11 +365,16 @@ Old Part1-5 files have been moved to `legacy/` folder for reference:
 These files are kept for reference but are no longer used in the new architecture.
 
 ## Notes
-- **Filename Format**: `WatchID-Project-Subject-Hand-Activity-Info-DateTime.csv`
-  - Project field: Can be "Assignment2", "Final", "Project1", or **any identifier**
-  - Activity field: Determines the class label (walking, running, sitting, etc.)
+- **Current Project**: Dumbbell Exercise Classification (3 classes)
+  - `bicep_curl` - Supinated grip bicep curl
+  - `hammer_curl` - Neutral grip hammer curl
+  - `tricep_kickback` - Linear arm extension
+- **Filename Format**: `WatchID-FinalProject-Subject-left-Activity-Info-DateTime.csv`
+  - Project field: `FinalProject` (or any identifier)
+  - Placement: `left` (left wrist)
+  - Activity field: Determines the class label (bicep_curl, hammer_curl, tricep_kickback)
 - **Multi-class Support**: Automatically detects all unique activities from filenames
-- **Activity Labels**: Any activity name works - system creates classes dynamically
+- **Sensor**: Accelerometer data at 50Hz sampling rate
 - Classification uses 10-fold cross-validation for accuracy evaluation
 - Sequential Feature Selection uses forward selection with MIN_IMPROVEMENT = 0.001
 - Each classifier is optimized independently for maximum performance
