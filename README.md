@@ -1,16 +1,22 @@
-# SPML Course - Assignment 2: Gesture Recognition Optimization
+# SPML Course - Activity Recognition System
 
 ## Overview
-This assignment builds upon Assignment 1 to improve gesture recognition accuracy through parameter tuning, feature engineering, and classifier comparison. The project uses smartwatch accelerometer data to classify hand-washing gestures.
+A modular machine learning system for activity recognition using smartwatch accelerometer data. The project supports multi-class classification for any activities with automatic class detection, per-classifier optimization, and comprehensive feature engineering.
 
-**New Modular Architecture**: The codebase has been refactored into a clean 5-engine architecture that supports per-classifier optimization and modular experiment configurations.
+**Key Features**: 
+- **Multi-class support** - Automatically detects and classifies any number of activities
+- **Per-classifier optimization** - Each classifier gets its own optimal window size and feature set
+- **Modular architecture** - 5 specialized engines for clean separation of concerns
+- **Flexible data format** - Accepts any project identifier in filenames
 
 ## Project Structure
 
 ```
 SPML-course-projects/
 ├── raw_data/                           # All raw CSV files from smartwatch
-│   └── G5NZCJ022402200-Assignment*-Jinyoon-*-hand_wash-*.csv
+│   └── WatchID-Project-Subject-Hand-Activity-Info-DateTime.csv
+│       # Examples: Assignment2, Final, Project1, etc. (any project name works)
+│       # Activity determines the class: walking, running, sitting, etc.
 ├── formatted_data/                     # Cleaned data (timestamp, ax, ay, az)
 ├── results/                            # Results organized by classifier and experiment
 │   ├── baseline/                       # Baseline results (all classifiers)
@@ -59,7 +65,8 @@ SPML-course-projects/
 **DataManager** - Raw data processing and format conversion
 - Format raw CSV files (drop sensor_type, accuracy columns)
 - Convert CSV to ARFF format
-- Extract activity labels from filenames
+- Extract activity labels from filenames (supports any activity type)
+- Automatic multi-class detection from file naming
 
 **FeatureEngine** - Feature extraction and engineering
 - Extract basic features (6): mean, std per axis
@@ -256,12 +263,13 @@ timestamp_ms, sensor_type, accuracy, ax, ay, az
 ### Features CSV
 ```
 mean_x,std_x,mean_y,std_y,mean_z,std_z,Activity
--4.523,0.421,1.234,0.567,8.901,0.345,hand_wash
+-4.523,0.421,1.234,0.567,8.901,0.345,walking
+-2.134,0.823,0.456,0.234,9.234,0.567,running
 ```
 
 ### ARFF Format (Weka)
 ```
-@RELATION gestures
+@RELATION activities
 
 @ATTRIBUTE mean_x NUMERIC
 @ATTRIBUTE std_x NUMERIC
@@ -269,9 +277,9 @@ mean_x,std_x,mean_y,std_y,mean_z,std_z,Activity
 @ATTRIBUTE std_y NUMERIC
 @ATTRIBUTE mean_z NUMERIC
 @ATTRIBUTE std_z NUMERIC
-@ATTRIBUTE Activity {hand_wash,non_hand_wash}
+@ATTRIBUTE Activity {walking,running,sitting,standing,...}
 
-@DATA
+@DATA@DATA
 -4.523,0.421,1.234,0.567,8.901,0.345,hand_wash
 ```
 
@@ -348,8 +356,11 @@ Old Part1-5 files have been moved to `legacy/` folder for reference:
 These files are kept for reference but are no longer used in the new architecture.
 
 ## Notes
-- Raw data files use naming convention: `WatchID-AssignmentX-Subject-Hand-Activity-Info-DateTime.csv`
-- Activity labels extracted from filenames: `hand_wash`, `non_hand_wash`
+- **Filename Format**: `WatchID-Project-Subject-Hand-Activity-Info-DateTime.csv`
+  - Project field: Can be "Assignment2", "Final", "Project1", or **any identifier**
+  - Activity field: Determines the class label (walking, running, sitting, etc.)
+- **Multi-class Support**: Automatically detects all unique activities from filenames
+- **Activity Labels**: Any activity name works - system creates classes dynamically
 - Classification uses 10-fold cross-validation for accuracy evaluation
 - Sequential Feature Selection uses forward selection with MIN_IMPROVEMENT = 0.001
 - Each classifier is optimized independently for maximum performance
