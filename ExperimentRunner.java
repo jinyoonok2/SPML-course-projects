@@ -293,7 +293,8 @@ public class ExperimentRunner {
      * Usage: java ExperimentRunner custom <features> <window> <classifier> [sfs]
      * Examples:
      *   java ExperimentRunner custom basic 2000 J48
-     *   java ExperimentRunner custom expanded 3000 SVM sfs
+     *   java ExperimentRunner custom expanded 3000 SVM_LINEAR sfs
+     *   java ExperimentRunner custom expanded 2000 SVM_RBF
      */
     private static void runCustomExperiment(Path baseDir, String[] args) throws Exception {
         if (args.length < 4) {
@@ -302,12 +303,12 @@ public class ExperimentRunner {
             System.err.println("Parameters:");
             System.err.println("  <features>    - 'basic' (6 features) or 'expanded' (12 features)");
             System.err.println("  <window>      - Window size in milliseconds (1000-4000)");
-            System.err.println("  <classifier>  - 'J48', 'RF', or 'SVM'");
+            System.err.println("  <classifier>  - 'J48', 'RF', 'SVM', 'SVM_LINEAR', 'SVM_POLY2', 'SVM_RBF'");
             System.err.println("  [sfs]         - Optional: add 'sfs' to enable feature selection");
             System.err.println();
             System.err.println("Examples:");
             System.err.println("  java ExperimentRunner custom basic 2000 J48");
-            System.err.println("  java ExperimentRunner custom expanded 3000 SVM sfs");
+            System.err.println("  java ExperimentRunner custom expanded 3000 SVM_RBF sfs");
             System.exit(1);
         }
         
@@ -316,13 +317,12 @@ public class ExperimentRunner {
         int windowMs = Integer.parseInt(args[2]);
         
         MLEngine.ClassifierType classifier;
-        String classifierArg = args[3].toUpperCase();
-        if (classifierArg.equals("RF")) {
-            classifier = MLEngine.ClassifierType.RANDOM_FOREST;
-        } else if (classifierArg.equals("SVM")) {
-            classifier = MLEngine.ClassifierType.SVM;
-        } else {
-            classifier = MLEngine.ClassifierType.J48;
+        try {
+            classifier = parseClassifierArgument(args[3]);
+        } catch (IllegalArgumentException ex) {
+            System.err.println(ex.getMessage());
+            System.exit(1);
+            return;
         }
         
         boolean useSfs = args.length > 4 && args[4].equalsIgnoreCase("sfs");
@@ -369,7 +369,8 @@ public class ExperimentRunner {
         System.out.println("    Mix and match any configuration you want!");
         System.out.println("    <features>    - 'basic' (6) or 'expanded' (12)");
         System.out.println("    <window>      - Window size in ms (1000-4000)");
-        System.out.println("    <classifier>  - 'J48', 'RF', or 'SVM'");
+        System.out.println("    <classifier>  - 'J48', 'RF', 'SVM', 'SVM_LINEAR', 'SVM_POLY2', 'SVM_RBF'");
+        System.out.println("    Aliases: 'SVM' defaults to the linear kernel, 'SVM_POLY' -> Poly2");
         System.out.println("    [sfs]         - Optional: add 'sfs' for feature selection");
         System.out.println();
         System.out.println("  help          - Show this help message");
@@ -385,8 +386,43 @@ public class ExperimentRunner {
         System.out.println("  java ExperimentRunner experiment              # Run complete pipeline");
         System.out.println("  java ExperimentRunner baseline                # Quick baseline");
         System.out.println("  java ExperimentRunner custom basic 2000 J48   # 6 features, 2s window, J48");
-        System.out.println("  java ExperimentRunner custom expanded 3000 SVM sfs  # 12 features, 3s, SVM with SFS");
+        System.out.println("  java ExperimentRunner custom expanded 3000 SVM_RBF sfs  # 12 features, 3s, SVM RBF with SFS");
         System.out.println("  java ExperimentRunner baseline      # Quick baseline evaluation");
         System.out.println("  java ExperimentRunner optimize      # Find optimal window size");
+    }
+
+    /**
+     * Parse classifier string argument to ClassifierType, supporting aliases
+     */
+    private static MLEngine.ClassifierType parseClassifierArgument(String arg) {
+        String normalized = arg.trim().toUpperCase();
+        switch (normalized) {
+            case "J48":
+            case "DT":
+            case "DECISIONTREE":
+                return MLEngine.ClassifierType.J48;
+            case "RF":
+            case "RANDOM_FOREST":
+            case "RANDOMFOREST":
+                return MLEngine.ClassifierType.RANDOM_FOREST;
+            case "SVM":
+            case "SVM_LINEAR":
+            case "SVM-LINEAR":
+            case "SMO":
+                return MLEngine.ClassifierType.SVM_LINEAR;
+            case "SVM_POLY":
+            case "SVM-POLY":
+            case "SVM_POLY2":
+            case "SVM-POLY2":
+            case "POLY":
+                return MLEngine.ClassifierType.SVM_POLY2;
+            case "SVM_RBF":
+            case "SVM-RBF":
+            case "RBF":
+                return MLEngine.ClassifierType.SVM_RBF;
+            default:
+                throw new IllegalArgumentException(
+                    "Unknown classifier '" + arg + "'. Valid options: J48, RF, SVM_LINEAR, SVM_POLY2, SVM_RBF.");
+        }
     }
 }
