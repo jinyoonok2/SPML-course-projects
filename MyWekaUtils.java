@@ -56,18 +56,32 @@ public class MyWekaUtils {
 		
 		Classifier classifier;
 		String classifierName;
-		if(option==1) {
-			classifier = new J48();
-			classifierName = "J48";
-		} else if(option==2) {
-			classifier = new RandomForest();
-			classifierName = "RandomForest";
-		} else if(option == 3) {
-			classifier = new SMO();
-			classifierName = "SVM";
-		} else {
-			return null;
-		}
+		if(option == 1) {
+            classifier = new J48();
+            classifierName = "J48";
+        } else if(option == 2) {
+            classifier = new RandomForest();
+            classifierName = "RandomForest";
+        } else if(option == 3) {
+            classifier = new SMO();
+            classifierName = "SVM-Default";
+        } else if(option == 4) {
+            SMO smo = new SMO();
+            PolyKernel poly = new PolyKernel();
+            poly.setExponent(2);
+            smo.setKernel(poly);
+            classifier = smo;
+            classifierName = "SVM-Poly2";
+        } else if(option == 5) {
+            SMO smo = new SMO();
+            RBFKernel rbf = new RBFKernel();
+            rbf.setGamma(0.01);
+            smo.setKernel(rbf);
+            classifier = smo;
+            classifierName = "SVM-RBF";
+        } else {
+            return null;
+        }
 		
 		classifier.buildClassifier(instances);
 		

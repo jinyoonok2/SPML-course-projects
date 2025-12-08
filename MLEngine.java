@@ -20,7 +20,9 @@ public class MLEngine {
     public enum ClassifierType {
         J48(1, "J48 Decision Tree"),
         RANDOM_FOREST(2, "Random Forest"),
-        SVM(3, "Support Vector Machine");
+        SVM_LINEAR(3, "Support Vector Machine (Linear)"),
+        SVM_POLY2(4, "Support Vector Machine (Poly degree 2)"),
+        SVM_RBF(5, "Support Vector Machine (RBF)");
         
         public final int wekaId;
         public final String displayName;
