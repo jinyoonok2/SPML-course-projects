@@ -12,6 +12,8 @@ import weka.classifiers.functions.SMO;
 import weka.classifiers.trees.J48;
 import weka.classifiers.trees.RandomForest;
 import weka.core.Instances;
+import weka.classifiers.functions.supportVector.PolyKernel;
+import weka.classifiers.functions.supportVector.RBFKernel;
 
 
 /**
@@ -32,8 +34,20 @@ public class MyWekaUtils {
 		else if(option==2)			
 			classifier = new RandomForest();
 		else if(option == 3)
-			classifier = new SMO();  //This is a SVM classifier
-		else 
+			classifier = new SMO();
+        else if (option == 4) {
+            SMO smo = new SMO();
+            PolyKernel poly = new PolyKernel();
+            poly.setExponent(2.0);
+            smo.setKernel(poly);
+            classifier = smo;
+        } else if (option == 5) {
+            SMO smo = new SMO();
+            RBFKernel rbf = new RBFKernel();
+            rbf.setGamma(0.01);
+            smo.setKernel(rbf);
+            classifier = smo;
+        } else
 			return -1;
 		
 		classifier.buildClassifier(instances); // build classifier
@@ -99,6 +113,8 @@ public class MyWekaUtils {
             case 1: return "J48 Decision Tree";
             case 2: return "Random Forest";
             case 3: return "SVM (SMO)";
+            case 4: return "SVM (Poly degree 2)";
+            case 5: return "SVM (RBF)";
             default: return "Unknown";
         }
     }
